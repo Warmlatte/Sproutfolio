@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/* ── Pixel fonts (files served from public/fonts/) ───────────────── */
+/* Cubic 11 (俐方體11號) — primary Traditional Chinese typeface · SIL OFL 1.1 */
+@font-face {
+  font-family: 'Cubic 11';
+  src:
+    url('/fonts/Cubic_11.woff2') format('woff2'),
+    url('/fonts/Cubic_11.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Sprout Lands pixel font — decorative English headings */
+@font-face {
+  font-family: 'SproutLands';
+  src: url('/fonts/pixelFont-7-8x14-sproutLands.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Design tokens — single source of truth: docs/style-guide.md ── */
+@theme {
+  /* Semantic color tokens (§2.4) — every hex taken from the style-guide ramp */
+  --color-surface: #E8CFA6; /* wood-200 */
+  --color-surface-inset: #C49A6C; /* wood-400 */
+  --color-border: #AA7959; /* wood-600 */
+  --color-outline: #6B4B5B; /* wood-800 */
+  --color-text: #6B4B5B; /* wood-800 */
+  --color-text-muted: #90625D; /* wood-700 */
+  --color-text-invert: #F3F4E7; /* stone-100 */
+  --color-accent: #EEBA77; /* gold-500 */
+  --color-accent-hover: #F2CF8C; /* gold-300 */
+  --color-link: #867FB8; /* plum-500 */
+  --color-success: #78A158; /* grass-500 */
+  --color-danger: #BD757E; /* berry-500 */
+  --color-scene-sky: #92B2D4; /* sky-300 */
+  --color-scene-ground: #78A158; /* grass-500 */
+  --color-scene-water: #7BA6B4; /* water-500 */
+
+  /* Integer pixel type scale (§3.2) — 11px base × integer multiples */
+  --text-pixel-sm: 11px; /* note / credit */
+  --text-pixel-base: 22px; /* body (2×) */
+  --text-pixel-lg: 33px; /* section title (3×) */
+  --text-pixel-xl: 44px; /* hero (4×) */
+
+  /* Font stacks (§3.1) */
+  --font-pixel: 'Cubic 11', 'SproutLands', system-ui, monospace;
+  --font-decorative: 'SproutLands', system-ui, monospace;
+}
+
+/* ── Global pixel rendering — style-guide §1 ─────────────────────── */
+@layer base {
+  html {
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-pixel);
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+
+  img,
+  canvas {
+    image-rendering: pixelated;
+  }
+}
