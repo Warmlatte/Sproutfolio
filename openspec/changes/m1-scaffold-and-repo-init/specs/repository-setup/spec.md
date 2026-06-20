@@ -38,12 +38,12 @@ The system SHALL name the project folder `sproutfolio` and the GitHub remote rep
 
 ### Requirement: Gitignore preserves internal-only paths
 
-The `.gitignore` SHALL keep the existing ignore rules so internal docs and curated assets stay out of the public repository, and SHALL additionally ignore tooling artifacts.
+The `.gitignore` SHALL keep curated assets, internal planning notes, and tooling state out of the public repository, while publishing the source, `public/` assets, project docs, and spec artifacts. It SHALL additionally ignore build and OS artifacts.
 
-#### Scenario: Internal paths are untracked
+#### Scenario: Internal-only paths are untracked
 
 - **WHEN** the first commit is created
-- **THEN** `docs/`, `CLAUDE.md`, `AGENTS.md`, and `精選素材` are not tracked, and `node_modules/`, `dist/`, and `.DS_Store` are ignored
+- **THEN** `精選素材`, `roadmap/` (internal planning), `.spectra/`, and `openspec/.vector-search.db*` are not tracked, and `node_modules/`, `dist/`, and `.DS_Store` are ignored
 
 ### Requirement: Public remote created and pushed
 

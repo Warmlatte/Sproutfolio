@@ -8,13 +8,9 @@ dist/
 .DS_Store
 
 # Internal-only docs & assets (kept out of the public repo)
-docs/
-CLAUDE.md
-AGENTS.md
+roadmap/
 精選素材/
 
 # Tooling state
 .spectra/
-.agents/
-.claude/
 openspec/.vector-search.db*
