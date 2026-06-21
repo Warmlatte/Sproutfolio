@@ -33,4 +33,4 @@
 ## 7. 首個 commit、建立遠端與推送
 
 - [x] 7.1 建立首個 commit 捕捉目前可追蹤狀態（骨架、`public/` 素材、`openspec/`、`.spectra.yaml`、`README.md`），訊息遵循 `chore:` 規範；驗證＝`git log` 出現首個 commit 且 `git status` 乾淨、`git ls-files` 不含被忽略的內部路徑。
-- [ ] 7.2 完成 Public remote created and pushed：以 `gh repo create Warmlatte/sproutfolio --public --source=. --remote=origin --push` 建立 public 遠端並推送 `main`；驗證＝`git remote -v` 之 origin 指向 `Warmlatte/sproutfolio`，遠端為 public 且 `main` 已上傳。
+- [x] 7.2 完成 Public remote created and pushed：以 `gh repo create Warmlatte/sproutfolio --public --source=. --remote=origin --push` 建立 public 遠端並推送 `main`；驗證＝`git remote -v` 之 origin 指向 `Warmlatte/sproutfolio`，遠端為 public 且 `main` 已上傳。
