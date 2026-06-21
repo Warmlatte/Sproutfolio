@@ -12,10 +12,14 @@
  * load failures surface a visible pixel-styled message instead of failing silently.
  */
 
-import { Application, Container } from 'pixi.js'
+import { Application, Container, type Ticker } from 'pixi.js'
 
 import { MAP_COLS, MAP_ROWS, TILE_SIZE, WORLD_SCALE } from '../constants'
-import { computeCenterOffset } from './camera'
+import { computeFollowOffset } from './camera'
+import { buildSolidSet } from './collision'
+import { createInput, type InputSource } from './input'
+import { farmMap } from './map/farmMap'
+import { createPlayer } from './player'
 import { buildFarmScene } from './scenes/farm'
 import { loadTextureAtlas, type TextureAtlas } from './textures'
 import type { CatalogKey } from './sprites/catalog'
@@ -25,13 +29,14 @@ export interface EngineHandle {
   destroy(): void
 }
 
-/** Sheets the farm scene needs loaded before assembly. */
+/** Sheets the farm scene and player need loaded before assembly. */
 const SCENE_SHEETS: readonly CatalogKey[] = [
   'grass',
   'paths',
   'water',
   'woodenHouse',
   'grassBiom',
+  'player',
 ]
 
 const MAP_PX = { w: MAP_COLS * TILE_SIZE, h: MAP_ROWS * TILE_SIZE }
@@ -95,7 +100,19 @@ export function createEngine(container: HTMLElement): EngineHandle {
   let destroyed = false
   let app: Application | null = null
   let atlas: TextureAtlas | null = null
+  let input: InputSource | null = null
+  let tick: ((ticker: Ticker) => void) | null = null
   let detachResize: (() => void) | null = null
+
+  /** Releases the per-frame loop, input listeners, and resize observer. */
+  const stopLoop = (): void => {
+    if (app && tick) app.ticker.remove(tick)
+    tick = null
+    input?.destroy()
+    input = null
+    detachResize?.()
+    detachResize = null
+  }
 
   const init = async (): Promise<void> => {
     try {
@@ -128,25 +145,39 @@ export function createEngine(container: HTMLElement): EngineHandle {
       app.stage.addChild(world)
       buildFarmScene(world, atlas)
 
-      const recenter = (): void => {
+      const solids = buildSolidSet(farmMap)
+      const player = createPlayer(world, atlas, farmMap.anchors.spawn)
+      input = createInput()
+
+      // Reposition the world so the camera centers on the player, clamped to the
+      // map. Used both per-frame and on container resize.
+      const follow = (): void => {
         if (!app) return
-        const offset = computeCenterOffset(
-          MAP_PX,
+        const offset = computeFollowOffset(
+          player.px,
           { w: app.screen.width, h: app.screen.height },
+          MAP_PX,
           WORLD_SCALE,
         )
         world.position.set(offset.x, offset.y)
       }
-      recenter()
+      follow()
 
       // Recompute from the CONTAINER's size (matching `resizeTo: container`),
       // not the window — the two can differ once panels/sidebars arrive (M7).
-      const resizeObserver = new ResizeObserver(recenter)
+      const resizeObserver = new ResizeObserver(follow)
       resizeObserver.observe(container)
       detachResize = () => resizeObserver.disconnect()
+
+      // Per-frame loop: read input → advance the player → follow the camera.
+      tick = (ticker: Ticker): void => {
+        const dt = ticker.deltaMS / 1000
+        player.update(dt, input?.read() ?? { x: 0, y: 0 }, solids)
+        follow()
+      }
+      app.ticker.add(tick)
     } catch (error: unknown) {
-      detachResize?.()
-      detachResize = null
+      stopLoop()
       atlas = destroyAtlas(atlas)
       app = destroyApp(app)
       if (!destroyed) showError(container, error)
@@ -158,8 +189,7 @@ export function createEngine(container: HTMLElement): EngineHandle {
   return {
     destroy(): void {
       destroyed = true
-      detachResize?.()
-      detachResize = null
+      stopLoop()
       atlas = destroyAtlas(atlas)
       app = destroyApp(app)
     },

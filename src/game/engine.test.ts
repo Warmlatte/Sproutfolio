@@ -232,4 +232,27 @@ describe('createEngine', () => {
     engine.destroy()
     expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
   })
+
+  it('runs a ticker loop on success and stops it on teardown', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    expect(app.ticker.add).toHaveBeenCalledTimes(1)
+    const tick = app.ticker.add.mock.calls[0]![0] as (t: { deltaMS: number }) => void
+
+    // A frame reads input and advances the player.
+    tick({ deltaMS: 16 })
+    expect(inputMock.read).toHaveBeenCalled()
+    expect(playerMock.update).toHaveBeenCalledWith(16 / 1000, { x: 0, y: 0 }, expect.anything())
+
+    engine.destroy()
+    expect(app.ticker.remove).toHaveBeenCalledWith(tick)
+    expect(inputMock.destroy).toHaveBeenCalledTimes(1)
+  })
 })
