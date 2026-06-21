@@ -37,6 +37,22 @@ export const PLAYER_ANIM_FPS = 8
 export const PLAYER_HITBOX = { w: 16, h: 10 } as const
 
 /**
+ * The character art occupies rows 16–31 of every 48×48 `player` frame: 16px of
+ * transparent padding above the head and 16px below the feet. The feet point
+ * `px` must map to the art's foot line (y=32), NOT the frame's bottom edge —
+ * otherwise collision and rendering sit one tile below the visible character.
+ */
+export const PLAYER_FOOT_INSET = 16
+
+/**
+ * Visible-character extent from the feet point `px`, measured from the sheet
+ * (content rows 16–31, ~14px wide): `up` px to the head, `halfW` px each side.
+ * Used to clamp the player so the visible body stays inside the map (and thus
+ * inside the map-clamped camera).
+ */
+export const PLAYER_BODY = { up: 16, halfW: 8 } as const
+
+/**
  * Facing → spritesheet row for the 4×4 `player` sheet (48×48 frames).
  * `待核對` — provisional row order pending visual confirmation on the `#sprites`
  * debug page. Correcting the mapping changes only these constants, never logic.

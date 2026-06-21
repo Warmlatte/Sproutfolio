@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PLAYER_SPEED, TILE_SIZE } from '../constants'
+import { PLAYER_BODY, PLAYER_FOOT_INSET, PLAYER_SPEED, TILE_SIZE } from '../constants'
 import { catalog } from './sprites/catalog'
 
 const pixiMock = vi.hoisted(() => ({
@@ -108,27 +108,29 @@ describe('createPlayer', () => {
     expect(player.px.x).toBe(start.x) // blocked, stays at the wall edge
   })
 
-  it('keeps the whole sprite within the map when walking into the top edge', () => {
+  it('keeps the visible body within the map when walking into the top edge', () => {
     const player = createPlayer(makeWorld() as never, atlas as never, spawn)
     // Walk up far past the edge with no obstacles in the way.
     for (let i = 0; i < 100; i += 1) player.update(1, { x: 0, y: -1 }, new Set())
-    const frameH = catalog.player.frameH // 48 — sprite drawn upward from the feet
-    // The sprite top (feet point minus frame height) must stay inside the map,
-    // so the map-clamped camera always shows the character.
-    expect(player.px.y - frameH).toBeGreaterThanOrEqual(0)
+    // The feet point clamps so the head (px.y - body.up) sits at the map top,
+    // i.e. the visible body stays inside the map-clamped camera.
+    expect(player.px.y).toBe(PLAYER_BODY.up)
   })
 
-  it('keeps the whole sprite within the left and right map edges', () => {
-    const frameW = catalog.player.frameW // 48; anchor 0.5 → extends frameW/2 each side
+  it('keeps the visible body within the left map edge', () => {
     const left = createPlayer(makeWorld() as never, atlas as never, spawn)
     for (let i = 0; i < 100; i += 1) left.update(1, { x: -1, y: 0 }, new Set())
-    expect(left.px.x - frameW / 2).toBeGreaterThanOrEqual(0)
+    expect(left.px.x).toBe(PLAYER_BODY.halfW)
   })
 
-  it('places the animated sprite at the feet point with a bottom-center anchor', () => {
+  it('anchors the sprite at the art foot line, not the transparent frame bottom', () => {
     createPlayer(makeWorld() as never, atlas as never, spawn)
     const sprite = pixiMock.sprites[0]
-    expect(sprite.anchor.set).toHaveBeenCalledWith(0.5, 1)
+    // The art's feet are at y=32 of the 48px frame (16px of bottom padding), so
+    // the anchor must point there — otherwise the character renders one tile
+    // above where it collides (collision box appears above bushes).
+    const footAnchorY = (catalog.player.frameH - PLAYER_FOOT_INSET) / catalog.player.frameH
+    expect(sprite.anchor.set).toHaveBeenCalledWith(0.5, footAnchorY)
     expect(sprite.position.x).toBe(spawn.col * TILE_SIZE + TILE_SIZE / 2)
     expect(sprite.position.y).toBe(spawn.row * TILE_SIZE + TILE_SIZE)
   })
