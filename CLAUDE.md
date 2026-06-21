@@ -117,15 +117,32 @@ Type：`feat` 新功能、`fix` Bug 修復、`refactor` 重構（不改行為）
 ## 🎫 GitHub Issue 開票原則與規範
 
 - **一個 change 一張 ticket**：原則上每個 Spectra change 對應一張 GitHub issue，不混票；範圍過大應拆成多個 change／多張 issue。
-- **必加標籤（label）**：每張 issue 開票時即標上對應標籤（功能領域 / 類型），標籤同時作為分支命名的 `{標籤}` 來源。
+- **主 issue 模板**：使用 `.github/ISSUE_TEMPLATE/spectra-change.md`，以 proposal 對應主 issue，tasks 章節拆子 issue。
+- **標題格式**：所有 issue 標題一律 `[type] 功能簡易描述`，例：
+  - `[feat] 建立核心地圖資料型別`
+  - `[test] 覆蓋 validateMapFile 驗證案例`
+  - `[chore] 初始化 Vite/React/TS 開發環境`
+- **必加標籤（label）**：每張 issue 開票時即標上對應 type 標籤。⚠️ 標題用短碼 `[feat]`，但 label 用全名 `feature`（其餘 type 標題與 label 同名）。
+
+  | Type（標題） | Label | 顏色 | 說明 |
+  |---|---|---|---|
+  | `feat` | `feature` | `#BB87FC` | 新功能 |
+  | `fix` | `fix` | `#EB5757` | Bug 修復 |
+  | `refactor` | `refactor` | `#95A2B3` | 重構（不改行為） |
+  | `docs` | `docs` | `#2D9CDB` | 文件變更 |
+  | `test` | `test` | `#4CB782` | 新增或調整測試 |
+  | `chore` | `chore` | `#6B7280` | 維護性工作（tooling、deps） |
+  | `style` | `style` | `#F2994A` | 格式調整（不影響邏輯） |
+  | `perf` | `perf` | `#27AE60` | 效能改善 |
+
 - **comment 紀錄詳細實作**：實作過程與決策、變更內容、驗證方式記錄於該 issue 的 comment，保持可追溯。
-- **Bug 票歸屬**：發現 bug 時，於**相關 issue 底下**另開 bug 票（標 `bug` 標籤並連結原 issue），不在原票直接混記。
+- **Bug 票歸屬**：發現 bug 時，於**相關 issue 底下**另開 bug 票（`[fix] …` 標題、標 `fix` 標籤並連結原 issue），不在原票直接混記。
 
 ## 🔀 分支規範
 
-- **命名格式**：`{標籤}/{功能或階段標題}#{issue號碼}`
+- **命名格式**：`{type}/{功能或階段標題}#{issue號碼}`
   - 例：`feat/world-map#12`、`fix/joystick-drift#27`
-  - `{標籤}` 取自該 issue 的標籤；`{功能或階段標題}` 用簡短 kebab-case；`#{issue號碼}` 對應 GitHub issue。
+  - `{type}` 用標題短碼（`feat`/`fix`/`refactor`/`docs`/`test`/`chore`/`style`/`perf`，對應 issue label 與 commit type）；`{功能或階段標題}` 用簡短 kebab-case；`#{issue號碼}` 對應 GitHub issue。
 - 於預設分支上要做功能性變更前，先依此規範開分支（呼應 Commit 規範）。
 
 ## 🛠️ 標準實作流程

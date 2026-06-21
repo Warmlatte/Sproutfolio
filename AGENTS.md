@@ -95,6 +95,7 @@ type：`feat` `fix` `refactor` `docs` `test` `chore` `style` `perf`。不同類�
 ## GitHub Issue 開票原則
 
 - **一個 change 一張 ticket**：每個 Spectra change 對應一張 GitHub issue，不混票；範圍過大則拆成多張。
+- **主 issue 模板**：使用 `.github/ISSUE_TEMPLATE/spectra-change.md`，以 proposal 對應主 issue，tasks 章節拆子 issue。
 - 開票即標上**標籤（label）**（功能領域／類型），標籤同時作為分支命名的 `{標籤}` 來源。
 - 實作過程、決策、變更與驗證記錄於該 issue 的 **comment**，保持可追溯。
 - 發現 bug 時於**相關 issue 底下**另開 bug 票（標 `bug` 並連結原 issue），不在原票混記。
