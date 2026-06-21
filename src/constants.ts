@@ -54,8 +54,7 @@ export const PLAYER_BODY = { up: 16, halfW: 8 } as const
 
 /**
  * Facing → spritesheet row for the 4×4 `player` sheet (48×48 frames).
- * `待核對` — provisional row order pending visual confirmation on the `#sprites`
- * debug page. Correcting the mapping changes only these constants, never logic.
+ * Confirmed visually from `character_spritesheet.png`: rows are down/up/left/right.
  */
 export const PLAYER_ROW_DOWN = 0
 export const PLAYER_ROW_UP = 1

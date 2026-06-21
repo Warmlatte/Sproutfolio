@@ -35,7 +35,7 @@ import type { TextureAtlas } from './textures'
 /** A cardinal facing for the four-direction animation. */
 export type Facing = 'down' | 'up' | 'left' | 'right'
 
-/** Facing → spritesheet row, from the (待核對) named constants. */
+/** Facing → spritesheet row, from the visually confirmed named constants. */
 const FACING_ROW: Record<Facing, number> = {
   down: PLAYER_ROW_DOWN,
   up: PLAYER_ROW_UP,
@@ -176,7 +176,7 @@ export function createPlayer(
   return {
     update,
     get px() {
-      return px
+      return { ...px }
     },
   }
 }

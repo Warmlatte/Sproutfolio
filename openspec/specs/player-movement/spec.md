@@ -69,12 +69,13 @@ The player SHALL move in unscaled world coordinates as a child of the world cont
 - **WHEN** the player is created
 - **THEN** its position is the pixel position of the map's `spawn` anchor
 
-#### Scenario: The whole sprite stays within the map at the edges
+#### Scenario: The visible body stays within the map at the edges
 
 - **WHEN** the player walks into a map edge (the feet box reaches the boundary)
-- **THEN** the feet point is clamped so the entire sprite frame (which is drawn
-  upward from the feet and wider than the feet box) stays within the map, so the
-  map-clamped camera always keeps the character fully visible
+- **THEN** the feet point is clamped so the visible character body (which is
+  drawn upward from the feet and wider than the feet box) stays within the map,
+  so the map-clamped camera always keeps the character fully visible while
+  transparent frame padding may harmlessly extend past the map edge
 
 
 <!-- @trace

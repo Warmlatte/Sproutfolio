@@ -11,7 +11,8 @@
  * Entries marked `待核對` have a frame layout that could not be confirmed
  * without visual inspection; the values divide the sheet evenly and are pending
  * confirmation on the `#sprites` debug page (see design.md Risks). `player`
- * (48×48, 4×4) and `dialogBox` (48×48, border 16) are pinned by the spec.
+ * (48×48, 4×4, rows down/up/left/right) and `dialogBox` (48×48, border 16)
+ * are pinned by the spec.
  */
 
 import type { SpriteSheet } from './types'
@@ -38,7 +39,7 @@ export type CatalogKey =
  */
 export const catalog = {
   // characters/ — pinned by spec: 48×48 frames in a 4×4 grid.
-  // Row order (which row is which facing) is 待核對 on the debug page.
+  // Row order is confirmed as down/up/left/right.
   player: {
     kind: 'grid',
     key: 'player',

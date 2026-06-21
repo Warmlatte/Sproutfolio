@@ -79,6 +79,12 @@ describe('resolveMove', () => {
     expect(result.y).toBe(18)
   })
 
+  it('does not tunnel through a solid cell during a large single-frame move', () => {
+    const solids = new Set(['2,1']) // x[32,48), y[16,32)
+    const result = resolveMove(box(0, 18), 64, 0, solids, bigBounds)
+    expect(result).toEqual({ x: 16, y: 18 })
+  })
+
   it('clamps the feet box within the map bounds (cannot leave the map)', () => {
     const bounds = { w: 64, h: 64 }
     const result = resolveMove(box(50, 50), 30, 30, new Set(), bounds)

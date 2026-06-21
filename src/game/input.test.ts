@@ -46,7 +46,7 @@ describe('directionFromKeys', () => {
 })
 
 describe('createInput', () => {
-  type Handler = (event: { code: string }) => void
+  type Handler = (event: { code: string; preventDefault: ReturnType<typeof vi.fn> }) => void
   let handlers: Record<string, Handler[]>
 
   beforeEach(() => {
@@ -65,8 +65,10 @@ describe('createInput', () => {
     vi.unstubAllGlobals()
   })
 
-  const fire = (type: string, code: string): void => {
-    for (const handler of handlers[type] ?? []) handler({ code })
+  const fire = (type: string, code: string): ReturnType<typeof vi.fn> => {
+    const event = { code, preventDefault: vi.fn() }
+    for (const handler of handlers[type] ?? []) handler(event)
+    return event.preventDefault
   }
 
   it('reads the zero vector before any key is pressed', () => {
@@ -83,6 +85,28 @@ describe('createInput', () => {
 
     fire('keyup', 'ArrowRight')
     expect(input.read()).toEqual({ x: 0, y: 0 })
+
+    input.destroy()
+  })
+
+  it('clears held movement when the window loses focus', () => {
+    const input = createInput()
+    fire('keydown', 'ArrowRight')
+    expect(input.read()).toEqual({ x: 1, y: 0 })
+
+    fire('blur', '')
+    expect(input.read()).toEqual({ x: 0, y: 0 })
+
+    input.destroy()
+  })
+
+  it('prevents browser defaults only for movement keys', () => {
+    const input = createInput()
+    const movementPreventDefault = fire('keydown', 'ArrowDown')
+    const otherPreventDefault = fire('keydown', 'Space')
+
+    expect(movementPreventDefault).toHaveBeenCalledTimes(1)
+    expect(otherPreventDefault).not.toHaveBeenCalled()
 
     input.destroy()
   })

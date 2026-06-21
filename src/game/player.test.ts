@@ -99,6 +99,18 @@ describe('createPlayer', () => {
     expect(player.px.y).toBe(start.y)
   })
 
+  it('returns a fresh px object so callers cannot mutate internal position', () => {
+    const player = createPlayer(makeWorld() as never, atlas as never, spawn)
+    const snapshot = player.px as { x: number; y: number }
+    snapshot.x = -999
+    snapshot.y = -999
+
+    expect(player.px).toEqual({
+      x: spawn.col * TILE_SIZE + TILE_SIZE / 2,
+      y: spawn.row * TILE_SIZE + TILE_SIZE,
+    })
+  })
+
   it('does not pass through a solid cell (collision is applied)', () => {
     const player = createPlayer(makeWorld() as never, atlas as never, spawn)
     const start = player.px

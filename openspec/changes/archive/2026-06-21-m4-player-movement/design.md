@@ -1,6 +1,6 @@
 ## Context
 
-M3 已渲染靜態農場：Pixi 引擎、28×18 瓦片、`WORLD_SCALE=3`、`camera.ts` 的純函式 `computeCenterOffset` 置中並夾制邊界、`engine.ts` 具 React Strict Mode 安全的 teardown。`farmMap.ts` 為純資料但**無碰撞資訊**，障礙物（木屋 3×5、池塘 4×3、樹叢單格）只存在於渲染層。角色素材 `character_spritesheet.png` 為 192×192、4×4（48×48 格），但「哪一列對哪個朝向、每列幾幀走路」仍 `待核對`，需在 `#sprites` debug 頁目視確認。`input.ts` 尚未存在；`events.ts` 僅型別（移動暫停橋接留給 M7）。
+M3 已渲染靜態農場：Pixi 引擎、28×18 瓦片、`WORLD_SCALE=3`、`camera.ts` 的純函式 `computeCenterOffset` 置中並夾制邊界、`engine.ts` 具 React Strict Mode 安全的 teardown。`farmMap.ts` 為純資料但**無碰撞資訊**，障礙物（木屋 3×5、池塘 4×3、樹叢單格）只存在於渲染層。角色素材 `character_spritesheet.png` 為 192×192、4×4（48×48 格），已目視確認列序為 down/up/left/right，每列 4 幀。`input.ts` 尚未存在；`events.ts` 僅型別（移動暫停橋接留給 M7）。
 
 約束：style-guide 鐵則要求整數倍縮放與最近鄰取樣（像素完美）；本專案測試策略為「純邏輯輕量單元測試 + 瀏覽器手動走動」，不導入重型測試框架。
 
@@ -65,7 +65,7 @@ M3 的 recenter 掛 `window` 的 `resize`，但渲染器用 `resizeTo: container
 - `constants.ts` 新增：`PLAYER_SPEED`、`PLAYER_ANIM_FPS`、`PLAYER_HITBOX`、角色朝向↔精靈列具名常數（如 `PLAYER_ROW_DOWN`）。
 - `engine.ts`：以 `app.ticker.add` 串接 `input.read` → `player.update` → `computeFollowOffset` → `world.position.set`；teardown 釋放 input、移除 ticker callback、`observer.disconnect()`。
 
-**失敗模式**：素材載入失敗沿用 M3 的像素風錯誤面板（不靜默）。角色朝向↔列對應未確認前，以 `constants.ts` 具名常數承載暫定值，於 `#sprites` 頁確認後只改常數、不動邏輯。
+**失敗模式**：素材載入失敗沿用 M3 的像素風錯誤面板（不靜默）。角色朝向↔列對應以 `constants.ts` 具名常數承載，已由 `character_spritesheet.png` 目視確認為 down/up/left/right；若素材日後替換，僅需改常數、不動邏輯。
 
 **精靈錨點與腳底點**：48×48 角色幀含透明留白——人物實際只佔幀內第 16–31 列（上緣 16px、腳下 16px 透明）。故 `px`（腳底點）對齊「美術腳線」（幀內 y=32），精靈 anchor 設為 `0.5, (frameH-PLAYER_FOOT_INSET)/frameH`，使「可見的腳」落在 `px`。若錯用 anchor `1.0`（幀底），碰撞與算繪會比可見人物低一格（向下走時人物會停在草叢上方一格、碰撞箱底貼草叢頂）。
 
@@ -83,7 +83,7 @@ M3 的 recenter 掛 `window` 的 `resize`，但渲染器用 `resizeTo: container
 
 ## Risks / Trade-offs
 
-- [角色朝向↔精靈列 `待核對`，猜錯會導致動畫朝向不符] → 對應抽成 `constants.ts` 具名常數；先於 `#sprites` debug 頁目視確認再填值，確認後只改常數。
+- [角色朝向↔精靈列若素材替換可能改變] → 對應抽成 `constants.ts` 具名常數；目前已確認 `character_spritesheet.png` 列序為 down/up/left/right，日後替換素材時只改常數。
 - [速度/碰撞框數值純屬手感，預設可能偏快或偏卡] → 全部放 `constants.ts`，手動走動時微調，不影響邏輯與測試。
 - [不做 y-sort，角色永遠畫在樹/屋之上，無法走到其背後] → 已與使用者確認為可接受邊界；feet 框仍改善移動手感，深度感留待日後小幅優化。
 - [house 整塊 3×5 設為 solid，無法走到屋後] → M4 接受；roadmap 僅要求「撞木屋被擋」，符合驗收。

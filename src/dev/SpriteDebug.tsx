@@ -13,7 +13,7 @@ import { catalog } from '../game/sprites/catalog'
 import { frameRect, nineSliceRects } from '../game/sprites/frame'
 
 // Pure slice math is resolved once at module load.
-// Player: first frame of each of the 4 rows = the four facings (row order 待核對).
+// Player rows are confirmed as down/up/left/right; first frame of each row previews idle facings.
 const playerFacings = [0, 4, 8, 12].map((i) => frameRect(catalog.player, i))
 const grassTile = [frameRect(catalog.grass, 0)]
 const waterFrames = [0, 1, 2, 3].map((i) => frameRect(catalog.water, i))
@@ -142,7 +142,7 @@ export function SpriteDebug() {
         Dev-only viewer (#sprites). Verify slices are sharp and correctly placed.
       </p>
 
-      <Section title="Player — four facings" note="row order 待核對">
+      <Section title="Player — four facings" note="rows: down / up / left / right">
         <SpriteCanvas src={catalog.player.src} rects={playerFacings} scale={4} />
       </Section>
 

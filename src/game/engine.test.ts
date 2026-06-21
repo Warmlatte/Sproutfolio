@@ -19,6 +19,7 @@ const resizeMock = vi.hoisted(() => ({
 interface MockResizeObserver {
   readonly observe: ReturnType<typeof vi.fn>
   readonly disconnect: ReturnType<typeof vi.fn>
+  trigger(): void
 }
 
 interface MockNode {
@@ -38,6 +39,7 @@ interface MockApplication {
   readonly screen: { width: number; height: number }
   readonly stage: { addChild: ReturnType<typeof vi.fn> }
   readonly ticker: { add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> }
+  readonly resize: ReturnType<typeof vi.fn>
   readonly destroy: ReturnType<typeof vi.fn>
   init(options: { resizeTo: { clientWidth: number; clientHeight: number } }): Promise<void>
 }
@@ -80,6 +82,16 @@ function makeContainer(): HTMLElement {
   return node as unknown as HTMLElement
 }
 
+function makeZeroSizeContainer(): HTMLElement {
+  const node = makeNode('div') as MockNode & {
+    clientWidth: number
+    clientHeight: number
+  }
+  node.clientWidth = 0
+  node.clientHeight = 0
+  return node as unknown as HTMLElement
+}
+
 async function flushAsync(): Promise<void> {
   await Promise.resolve()
   await Promise.resolve()
@@ -89,8 +101,14 @@ vi.mock('pixi.js', () => {
   class Application implements MockApplication {
     readonly canvas = makeNode('canvas')
     readonly screen = { width: 0, height: 0 }
+    private resizeTarget: { clientWidth: number; clientHeight: number } | null = null
     readonly stage = { addChild: vi.fn() }
     readonly ticker = { add: vi.fn(), remove: vi.fn() }
+    readonly resize = vi.fn(() => {
+      if (!this.resizeTarget) return
+      this.screen.width = this.resizeTarget.clientWidth
+      this.screen.height = this.resizeTarget.clientHeight
+    })
     readonly destroy = vi.fn(() => {
       const parent = this.canvas.parentNode
       if (parent) {
@@ -102,8 +120,8 @@ vi.mock('pixi.js', () => {
     async init(options: {
       resizeTo: { clientWidth: number; clientHeight: number }
     }): Promise<void> {
-      this.screen.width = options.resizeTo.clientWidth
-      this.screen.height = options.resizeTo.clientHeight
+      this.resizeTarget = options.resizeTo
+      this.resize()
       pixiMock.appInstances.push(this)
     }
   }
@@ -161,8 +179,11 @@ describe('createEngine', () => {
       class {
         readonly observe = vi.fn()
         readonly disconnect = vi.fn()
-        constructor(_callback: () => void) {
+        constructor(private readonly callback: () => void) {
           resizeMock.instances.push(this as unknown as MockResizeObserver)
+        }
+        trigger(): void {
+          this.callback()
         }
       },
     )
@@ -231,6 +252,45 @@ describe('createEngine', () => {
 
     engine.destroy()
     expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('resizes the Pixi app from the container observer before following the camera', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    createEngine(container)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    app.resize.mockClear()
+    const mutableContainer = container as HTMLElement & {
+      clientWidth: number
+      clientHeight: number
+    }
+    mutableContainer.clientWidth = 480
+    mutableContainer.clientHeight = 320
+
+    resizeMock.instances[0]?.trigger()
+
+    expect(app.resize).toHaveBeenCalledTimes(1)
+    expect(app.screen).toEqual({ width: 480, height: 320 })
+  })
+
+  it('disconnects the pre-init size observer when destroyed before the container is sized', async () => {
+    const container = makeZeroSizeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    expect(resizeMock.instances).toHaveLength(1)
+    expect(resizeMock.instances[0]?.observe).toHaveBeenCalledWith(container)
+
+    engine.destroy()
+    expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
+    expect(pixiMock.appInstances).toHaveLength(0)
   })
 
   it('runs a ticker loop on success and stops it on teardown', async () => {

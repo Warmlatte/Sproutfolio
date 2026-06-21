@@ -81,19 +81,34 @@ function destroyAtlas(atlas: TextureAtlas | null): null {
  * Waits until `container` has a non-zero size, then resolves. Defers init for a
  * zero-size container so centering never divides into an empty viewport.
  */
-function whenSized(container: HTMLElement): Promise<void> {
+function waitForSize(container: HTMLElement): {
+  readonly promise: Promise<void>
+  readonly cancel: () => void
+} {
   if (container.clientWidth > 0 && container.clientHeight > 0) {
-    return Promise.resolve()
+    return { promise: Promise.resolve(), cancel: () => {} }
   }
-  return new Promise((resolve) => {
-    const observer = new ResizeObserver(() => {
+  let observer: ResizeObserver | null = null
+  let resolvePromise: () => void = () => {}
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve
+    observer = new ResizeObserver(() => {
       if (container.clientWidth > 0 && container.clientHeight > 0) {
-        observer.disconnect()
+        observer?.disconnect()
+        observer = null
         resolve()
       }
     })
     observer.observe(container)
   })
+  return {
+    promise,
+    cancel: () => {
+      observer?.disconnect()
+      observer = null
+      resolvePromise()
+    },
+  }
 }
 
 export function createEngine(container: HTMLElement): EngineHandle {
@@ -116,7 +131,10 @@ export function createEngine(container: HTMLElement): EngineHandle {
 
   const init = async (): Promise<void> => {
     try {
-      await whenSized(container)
+      const sizeWaiter = waitForSize(container)
+      detachResize = sizeWaiter.cancel
+      await sizeWaiter.promise
+      detachResize = null
       if (destroyed) return
 
       const application = new Application()
@@ -163,9 +181,13 @@ export function createEngine(container: HTMLElement): EngineHandle {
       }
       follow()
 
-      // Recompute from the CONTAINER's size (matching `resizeTo: container`),
-      // not the window — the two can differ once panels/sidebars arrive (M7).
-      const resizeObserver = new ResizeObserver(follow)
+      // Recompute from the CONTAINER's size, not the window — the two can differ
+      // once panels/sidebars arrive (M7). Pixi's resize plugin listens to
+      // window resize, so container-only changes must be applied explicitly first.
+      const resizeObserver = new ResizeObserver(() => {
+        app?.resize()
+        follow()
+      })
       resizeObserver.observe(container)
       detachResize = () => resizeObserver.disconnect()
 

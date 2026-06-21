@@ -98,7 +98,7 @@ Pixi 不像 KAPLAY 自帶遊戲框架，因此本里程碑是「混合」：渲�
 
 - 依 `dir` 決定朝向；朝向改變時切換為該朝向的走路 `textures[]`。
 - 移動中 `play()`（`animationSpeed` 換算 `PLAYER_ANIM_FPS = 8`）；靜止時 `gotoAndStop()` 回該朝向待機幀。
-- ⚠️ **朝向↔列對應仍 `待核對`**：`character_spritesheet.png` 為 4×4（48×48 格），需先在 `#sprites` debug 頁確認「哪一列是下/上/左/右、每列幾幀走路」。對應抽成 `constants.ts` 具名常數（如 `PLAYER_ROW_DOWN`），確認後只改常數、不動邏輯。
+- **朝向↔列對應已確認**：`character_spritesheet.png` 為 4×4（48×48 格），列序為 down/up/left/right，每列 4 幀。對應抽成 `constants.ts` 具名常數（如 `PLAYER_ROW_DOWN`），日後替換素材時只改常數、不動邏輯。
 
 ## 八、M3 審查遺留（本里程碑必處理，導入相機跟隨前先做）
 

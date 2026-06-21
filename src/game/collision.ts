@@ -58,6 +58,10 @@ const EPSILON = 1e-6
 const clamp = (value: number, lo: number, hi: number): number =>
   Math.min(Math.max(value, lo), hi)
 
+// Keep each collision probe smaller than a tile so a large frame delta cannot
+// jump completely over a solid cell without ever overlapping it.
+const MAX_AXIS_STEP = TILE_SIZE / 2
+
 /** Whether a box `[x, x+w) × [y, y+h)` overlaps any solid grid cell. */
 function overlapsSolid(
   x: number,
@@ -94,27 +98,45 @@ export function resolveMove(
   bounds: Bounds,
 ): Position {
   // --- X axis ---
-  let nx = box.x + dx
-  if (dx !== 0 && overlapsSolid(nx, box.y, box.w, box.h, solids)) {
-    if (dx > 0) {
-      const col = Math.floor((nx + box.w - EPSILON) / TILE_SIZE)
-      nx = col * TILE_SIZE - box.w
+  let nx = box.x
+  let remainingX = dx
+  while (remainingX !== 0) {
+    const step = Math.sign(remainingX) * Math.min(Math.abs(remainingX), MAX_AXIS_STEP)
+    const candidateX = nx + step
+    if (overlapsSolid(candidateX, box.y, box.w, box.h, solids)) {
+      if (step > 0) {
+        const col = Math.floor((candidateX + box.w - EPSILON) / TILE_SIZE)
+        nx = col * TILE_SIZE - box.w
+      } else {
+        const col = Math.floor(candidateX / TILE_SIZE)
+        nx = (col + 1) * TILE_SIZE
+      }
+      remainingX = 0
     } else {
-      const col = Math.floor(nx / TILE_SIZE)
-      nx = (col + 1) * TILE_SIZE
+      nx = candidateX
+      remainingX -= step
     }
   }
   nx = clamp(nx, 0, bounds.w - box.w)
 
   // --- Y axis (using the resolved x for the perpendicular span) ---
-  let ny = box.y + dy
-  if (dy !== 0 && overlapsSolid(nx, ny, box.w, box.h, solids)) {
-    if (dy > 0) {
-      const row = Math.floor((ny + box.h - EPSILON) / TILE_SIZE)
-      ny = row * TILE_SIZE - box.h
+  let ny = box.y
+  let remainingY = dy
+  while (remainingY !== 0) {
+    const step = Math.sign(remainingY) * Math.min(Math.abs(remainingY), MAX_AXIS_STEP)
+    const candidateY = ny + step
+    if (overlapsSolid(nx, candidateY, box.w, box.h, solids)) {
+      if (step > 0) {
+        const row = Math.floor((candidateY + box.h - EPSILON) / TILE_SIZE)
+        ny = row * TILE_SIZE - box.h
+      } else {
+        const row = Math.floor(candidateY / TILE_SIZE)
+        ny = (row + 1) * TILE_SIZE
+      }
+      remainingY = 0
     } else {
-      const row = Math.floor(ny / TILE_SIZE)
-      ny = (row + 1) * TILE_SIZE
+      ny = candidateY
+      remainingY -= step
     }
   }
   ny = clamp(ny, 0, bounds.h - box.h)
