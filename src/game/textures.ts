@@ -37,6 +37,10 @@ export async function loadTextureAtlas(
   keys: readonly CatalogKey[],
 ): Promise<TextureAtlas> {
   const sources = new Map<CatalogKey, TextureSource>()
+  // Cache per-frame textures by `key:index` so repeated tiles (e.g. a grass
+  // fill rendered hundreds of times) reuse one Texture instead of allocating a
+  // fresh wrapper per call.
+  const frames = new Map<string, Texture>()
 
   await Promise.all(
     keys.map(async (key) => {
@@ -47,6 +51,12 @@ export async function loadTextureAtlas(
   )
 
   const getTexture = (key: CatalogKey, index: number): Texture => {
+    const cacheKey = `${key}:${index}`
+    const cached = frames.get(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const source = sources.get(key)
     if (!source) {
       throw new Error(
@@ -62,13 +72,16 @@ export async function loadTextureAtlas(
     }
 
     const rect = frameRect(sheet as GridSheet, index)
-    return new Texture({
+    const texture = new Texture({
       source,
       frame: new Rectangle(rect.sx, rect.sy, rect.sw, rect.sh),
     })
+    frames.set(cacheKey, texture)
+    return texture
   }
 
   const destroy = (): void => {
+    frames.clear()
     for (const key of sources.keys()) {
       Assets.unload(catalog[key].src)
     }
