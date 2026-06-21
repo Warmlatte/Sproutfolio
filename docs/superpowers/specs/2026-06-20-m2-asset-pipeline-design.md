@@ -71,7 +71,7 @@ type SpriteSheet = GridSheet | NineSlice
 | btnSquare | ui/btn_square_26.png | grid | 96×192（狀態格，尺寸待 debug 核對）|
 | dialogBox | ui/dialog_box.png | nine-slice | 48×48，border 16 |
 
-> 標「待核對」者的精確 frame 尺寸與動畫行列順序，於 debug 頁目視確認後填入；player 的四向行序（down/up/left/right）以 debug 頁實際顯示為準。
+> 標「待核對」者的精確 frame 尺寸與動畫行列順序，於 debug 頁目視確認後填入；player 的四向行序已確認為 down/up/left/right。
 
 ### 3.3 純切片數學 — `src/game/sprites/frame.ts`
 

@@ -12,6 +12,16 @@ const farmSceneMock = vi.hoisted(() => ({
   buildFarmScene: vi.fn(),
 }))
 
+const resizeMock = vi.hoisted(() => ({
+  instances: [] as MockResizeObserver[],
+}))
+
+interface MockResizeObserver {
+  readonly observe: ReturnType<typeof vi.fn>
+  readonly disconnect: ReturnType<typeof vi.fn>
+  trigger(): void
+}
+
 interface MockNode {
   readonly tagName: string
   readonly style: { cssText: string }
@@ -28,6 +38,8 @@ interface MockApplication {
   readonly canvas: MockNode
   readonly screen: { width: number; height: number }
   readonly stage: { addChild: ReturnType<typeof vi.fn> }
+  readonly ticker: { add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> }
+  readonly resize: ReturnType<typeof vi.fn>
   readonly destroy: ReturnType<typeof vi.fn>
   init(options: { resizeTo: { clientWidth: number; clientHeight: number } }): Promise<void>
 }
@@ -70,6 +82,16 @@ function makeContainer(): HTMLElement {
   return node as unknown as HTMLElement
 }
 
+function makeZeroSizeContainer(): HTMLElement {
+  const node = makeNode('div') as MockNode & {
+    clientWidth: number
+    clientHeight: number
+  }
+  node.clientWidth = 0
+  node.clientHeight = 0
+  return node as unknown as HTMLElement
+}
+
 async function flushAsync(): Promise<void> {
   await Promise.resolve()
   await Promise.resolve()
@@ -79,7 +101,14 @@ vi.mock('pixi.js', () => {
   class Application implements MockApplication {
     readonly canvas = makeNode('canvas')
     readonly screen = { width: 0, height: 0 }
+    private resizeTarget: { clientWidth: number; clientHeight: number } | null = null
     readonly stage = { addChild: vi.fn() }
+    readonly ticker = { add: vi.fn(), remove: vi.fn() }
+    readonly resize = vi.fn(() => {
+      if (!this.resizeTarget) return
+      this.screen.width = this.resizeTarget.clientWidth
+      this.screen.height = this.resizeTarget.clientHeight
+    })
     readonly destroy = vi.fn(() => {
       const parent = this.canvas.parentNode
       if (parent) {
@@ -91,8 +120,8 @@ vi.mock('pixi.js', () => {
     async init(options: {
       resizeTo: { clientWidth: number; clientHeight: number }
     }): Promise<void> {
-      this.screen.width = options.resizeTo.clientWidth
-      this.screen.height = options.resizeTo.clientHeight
+      this.resizeTarget = options.resizeTo
+      this.resize()
       pixiMock.appInstances.push(this)
     }
   }
@@ -113,6 +142,28 @@ vi.mock('./scenes/farm', () => ({
   buildFarmScene: farmSceneMock.buildFarmScene,
 }))
 
+const inputMock = vi.hoisted(() => ({
+  destroy: vi.fn(),
+  read: vi.fn(() => ({ x: 0, y: 0 })),
+}))
+
+const playerMock = vi.hoisted(() => ({
+  update: vi.fn(),
+}))
+
+vi.mock('./input', () => ({
+  createInput: vi.fn(() => ({ read: inputMock.read, destroy: inputMock.destroy })),
+}))
+
+vi.mock('./player', () => ({
+  createPlayer: vi.fn(() => ({
+    update: playerMock.update,
+    get px() {
+      return { x: 0, y: 0 }
+    },
+  })),
+}))
+
 describe('createEngine', () => {
   beforeEach(() => {
     vi.stubGlobal('document', {
@@ -122,9 +173,26 @@ describe('createEngine', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })
+    resizeMock.instances.length = 0
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        readonly observe = vi.fn()
+        readonly disconnect = vi.fn()
+        constructor(private readonly callback: () => void) {
+          resizeMock.instances.push(this as unknown as MockResizeObserver)
+        }
+        trigger(): void {
+          this.callback()
+        }
+      },
+    )
     pixiMock.appInstances.length = 0
     textureMock.loadTextureAtlas.mockReset()
     farmSceneMock.buildFarmScene.mockReset()
+    inputMock.destroy.mockClear()
+    inputMock.read.mockClear()
+    playerMock.update.mockClear()
   })
 
   afterEach(() => {
@@ -167,5 +235,84 @@ describe('createEngine', () => {
     await flushAsync()
 
     expect(atlas.destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('observes the container for resize on success and disconnects on destroy', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    // Resize source is the container ResizeObserver, not a window resize event.
+    expect(resizeMock.instances).toHaveLength(1)
+    expect(resizeMock.instances[0]?.observe).toHaveBeenCalledWith(container)
+
+    engine.destroy()
+    expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
+  })
+
+  it('resizes the Pixi app from the container observer before following the camera', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    createEngine(container)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    app.resize.mockClear()
+    const mutableContainer = container as HTMLElement & {
+      clientWidth: number
+      clientHeight: number
+    }
+    mutableContainer.clientWidth = 480
+    mutableContainer.clientHeight = 320
+
+    resizeMock.instances[0]?.trigger()
+
+    expect(app.resize).toHaveBeenCalledTimes(1)
+    expect(app.screen).toEqual({ width: 480, height: 320 })
+  })
+
+  it('disconnects the pre-init size observer when destroyed before the container is sized', async () => {
+    const container = makeZeroSizeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    expect(resizeMock.instances).toHaveLength(1)
+    expect(resizeMock.instances[0]?.observe).toHaveBeenCalledWith(container)
+
+    engine.destroy()
+    expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
+    expect(pixiMock.appInstances).toHaveLength(0)
+  })
+
+  it('runs a ticker loop on success and stops it on teardown', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    expect(app.ticker.add).toHaveBeenCalledTimes(1)
+    const tick = app.ticker.add.mock.calls[0]![0] as (t: { deltaMS: number }) => void
+
+    // A frame reads input and advances the player.
+    tick({ deltaMS: 16 })
+    expect(inputMock.read).toHaveBeenCalled()
+    expect(playerMock.update).toHaveBeenCalledWith(16 / 1000, { x: 0, y: 0 }, expect.anything())
+
+    engine.destroy()
+    expect(app.ticker.remove).toHaveBeenCalledWith(tick)
+    expect(inputMock.destroy).toHaveBeenCalledTimes(1)
   })
 })
