@@ -139,8 +139,11 @@ export function createEngine(container: HTMLElement): EngineHandle {
       }
       recenter()
 
-      window.addEventListener('resize', recenter)
-      detachResize = () => window.removeEventListener('resize', recenter)
+      // Recompute from the CONTAINER's size (matching `resizeTo: container`),
+      // not the window — the two can differ once panels/sidebars arrive (M7).
+      const resizeObserver = new ResizeObserver(recenter)
+      resizeObserver.observe(container)
+      detachResize = () => resizeObserver.disconnect()
     } catch (error: unknown) {
       detachResize?.()
       detachResize = null

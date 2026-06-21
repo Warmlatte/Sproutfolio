@@ -12,6 +12,15 @@ const farmSceneMock = vi.hoisted(() => ({
   buildFarmScene: vi.fn(),
 }))
 
+const resizeMock = vi.hoisted(() => ({
+  instances: [] as MockResizeObserver[],
+}))
+
+interface MockResizeObserver {
+  readonly observe: ReturnType<typeof vi.fn>
+  readonly disconnect: ReturnType<typeof vi.fn>
+}
+
 interface MockNode {
   readonly tagName: string
   readonly style: { cssText: string }
@@ -28,6 +37,7 @@ interface MockApplication {
   readonly canvas: MockNode
   readonly screen: { width: number; height: number }
   readonly stage: { addChild: ReturnType<typeof vi.fn> }
+  readonly ticker: { add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> }
   readonly destroy: ReturnType<typeof vi.fn>
   init(options: { resizeTo: { clientWidth: number; clientHeight: number } }): Promise<void>
 }
@@ -80,6 +90,7 @@ vi.mock('pixi.js', () => {
     readonly canvas = makeNode('canvas')
     readonly screen = { width: 0, height: 0 }
     readonly stage = { addChild: vi.fn() }
+    readonly ticker = { add: vi.fn(), remove: vi.fn() }
     readonly destroy = vi.fn(() => {
       const parent = this.canvas.parentNode
       if (parent) {
@@ -113,6 +124,28 @@ vi.mock('./scenes/farm', () => ({
   buildFarmScene: farmSceneMock.buildFarmScene,
 }))
 
+const inputMock = vi.hoisted(() => ({
+  destroy: vi.fn(),
+  read: vi.fn(() => ({ x: 0, y: 0 })),
+}))
+
+const playerMock = vi.hoisted(() => ({
+  update: vi.fn(),
+}))
+
+vi.mock('./input', () => ({
+  createInput: vi.fn(() => ({ read: inputMock.read, destroy: inputMock.destroy })),
+}))
+
+vi.mock('./player', () => ({
+  createPlayer: vi.fn(() => ({
+    update: playerMock.update,
+    get px() {
+      return { x: 0, y: 0 }
+    },
+  })),
+}))
+
 describe('createEngine', () => {
   beforeEach(() => {
     vi.stubGlobal('document', {
@@ -122,9 +155,23 @@ describe('createEngine', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })
+    resizeMock.instances.length = 0
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        readonly observe = vi.fn()
+        readonly disconnect = vi.fn()
+        constructor(_callback: () => void) {
+          resizeMock.instances.push(this as unknown as MockResizeObserver)
+        }
+      },
+    )
     pixiMock.appInstances.length = 0
     textureMock.loadTextureAtlas.mockReset()
     farmSceneMock.buildFarmScene.mockReset()
+    inputMock.destroy.mockClear()
+    inputMock.read.mockClear()
+    playerMock.update.mockClear()
   })
 
   afterEach(() => {
@@ -167,5 +214,22 @@ describe('createEngine', () => {
     await flushAsync()
 
     expect(atlas.destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('observes the container for resize on success and disconnects on destroy', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    const engine = createEngine(container)
+    await flushAsync()
+
+    // Resize source is the container ResizeObserver, not a window resize event.
+    expect(resizeMock.instances).toHaveLength(1)
+    expect(resizeMock.instances[0]?.observe).toHaveBeenCalledWith(container)
+
+    engine.destroy()
+    expect(resizeMock.instances[0]?.disconnect).toHaveBeenCalledTimes(1)
   })
 })
