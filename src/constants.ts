@@ -12,3 +12,9 @@ export const WORLD_SCALE = 3
 
 /** Integer zoom applied to UI surfaces (2×). */
 export const UI_SCALE = 2
+
+/** Farm map width in tiles (M3). 28×18 ≈ 448×288 px at 1×, 1344×864 at 3×. */
+export const MAP_COLS = 28
+
+/** Farm map height in tiles (M3). */
+export const MAP_ROWS = 18
