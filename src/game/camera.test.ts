@@ -19,22 +19,21 @@ describe('computeCenterOffset', () => {
     })
   })
 
-  it('keeps the viewport inside the map when the map is larger (clamp)', () => {
-    // scaledMap 300×300, viewport 150×150 → centered offset is negative but the
-    // viewport must never show past the map edge.
-    const mapPx = { w: 100, h: 100 }
-    const viewportPx = { w: 150, h: 150 }
-    const scale = 3
-    const offset = computeCenterOffset(mapPx, viewportPx, scale)
+  it('centers a map larger than the viewport with a negative offset', () => {
+    // scaledMap 300×300, viewport 150×150 → span = 150 - 300 = -150, centered at
+    // round(-150 / 2) = -75. Asserting the exact value (not just the bounds)
+    // catches any regression in the centering math, since a bounds-only check
+    // would still pass with a broken offset anywhere in [-150, 0].
+    const offset = computeCenterOffset({ w: 100, h: 100 }, { w: 150, h: 150 }, 3)
+    expect(offset).toEqual({ x: -75, y: -75 })
 
-    const scaledW = mapPx.w * scale
-    const scaledH = mapPx.h * scale
-    // Upper bound 0 (left/top edge not crossed), lower bound viewport - scaledMap
-    // (right/bottom edge not crossed).
+    const scaled = 100 * 3
+    const viewport = 150
+    // The clamp range that M4's player-follow camera will reuse: the offset must
+    // stay within [viewport - scaledMap, 0] so the viewport never reveals empty
+    // space past the map edges.
     expect(offset.x).toBeLessThanOrEqual(0)
-    expect(offset.x).toBeGreaterThanOrEqual(viewportPx.w - scaledW)
-    expect(offset.y).toBeLessThanOrEqual(0)
-    expect(offset.y).toBeGreaterThanOrEqual(viewportPx.h - scaledH)
+    expect(offset.x).toBeGreaterThanOrEqual(viewport - scaled)
   })
 
   it('returns integer pixel offsets to keep pixels sharp', () => {
