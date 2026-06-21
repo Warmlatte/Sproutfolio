@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -6,4 +7,9 @@ import tailwindcss from '@tailwindcss/vite'
 // deploy milestone (M10), where the repo subpath will be configured.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Pure slice math is environment-free; node keeps the test run fast.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
 })
