@@ -11,6 +11,7 @@ const coreAssetFiles = [
   'characters/character_actions.png',
   'characters/character_spritesheet.png',
   'objects/grass_biom.png',
+  'objects/paths.png',
   'objects/plants.png',
   'tilesets/grass.png',
   'tilesets/water.png',
@@ -27,7 +28,6 @@ const deferredAssetFragments = [
   'fences',
   'doors',
   'hills',
-  'paths',
   'bridge',
 ] as const
 
@@ -43,7 +43,7 @@ function listSpriteFiles(dir: URL = spritesRoot, prefix = ''): string[] {
 }
 
 describe('sprite catalog contract', () => {
-  it('exposes the exact M2 logical keys', () => {
+  it('exposes the exact logical keys (M2 core plus the M3 paths entry)', () => {
     expect(Object.keys(catalogContract).sort()).toEqual([
       'btnSquare',
       'dialogBox',
@@ -51,6 +51,7 @@ describe('sprite catalog contract', () => {
       'grassBiom',
       'iconsAll',
       'inventory',
+      'paths',
       'plants',
       'player',
       'playerActions',
@@ -93,7 +94,7 @@ describe('sprite catalog contract', () => {
     }
   })
 
-  it('keeps the copied public sprite files to the 11 core assets', () => {
+  it('keeps the copied public sprite files to the 12 core assets', () => {
     expect(listSpriteFiles().sort()).toEqual([...coreAssetFiles].sort())
   })
 

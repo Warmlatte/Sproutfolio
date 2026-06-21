@@ -1,7 +1,9 @@
 /**
  * Engine-agnostic sprite slice catalog (M2).
  *
- * Single source of truth for sprite-sheet coordinates used by M3–M7. Each entry
+ * Single source of truth for sprite-sheet coordinates used by M3–M7. The `paths`
+ * entry (objects/paths.png, 4×4) was added in the M3 change for the path layer.
+ * Each entry
  * is keyed by a logical name and describes the sheet as pure data (see
  * ./types.ts). Frame counts are derived from the copied sheet dimensions under
  * `public/sprites/` and divide evenly into the stated grid.
@@ -23,6 +25,7 @@ export type CatalogKey =
   | 'woodenHouse'
   | 'plants'
   | 'grassBiom'
+  | 'paths'
   | 'iconsAll'
   | 'inventory'
   | 'btnSquare'
@@ -113,6 +116,17 @@ export const catalog = {
     frameH: 16,
     cols: 9,
     rows: 5,
+  },
+
+  // objects/ — 64×64, 16px tiles → 4×4. Path tiles connecting the four regions.
+  paths: {
+    kind: 'grid',
+    key: 'paths',
+    src: '/sprites/objects/paths.png',
+    frameW: 16,
+    frameH: 16,
+    cols: 4,
+    rows: 4,
   },
 
   // ui/ — 288×48, 16px icons → 18×3.
