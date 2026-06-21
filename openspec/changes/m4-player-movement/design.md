@@ -60,7 +60,7 @@ M3 的 recenter 掛 `window` 的 `resize`，但渲染器用 `resizeTo: container
 
 - `input.ts`：`createInput(): { read(): { x: number; y: number }; destroy(): void }`；純函式 `directionFromKeys(keys: ReadonlySet<string>): { x: number; y: number }`（已正規化，無輸入回 `{x:0,y:0}`）。
 - `collision.ts`：`buildSolidSet(map: FarmMap): ReadonlySet<string>`（鍵格式 `"col,row"`）；`resolveMove(box, dx, dy, solids, bounds): { x: number; y: number }`（回傳修正後的新位置，軸分離解算）。
-- `camera.ts`：`computeFollowOffset(playerPx: Size, viewportPx: Size, mapPx: Size, scale: number): Offset`（整數像素位移）。
+- `camera.ts`：`computeFollowOffset(playerPx: Offset, viewportPx: Size, mapPx: Size, scale: number): Offset`（`playerPx` 為角色未縮放世界座標點 `{x,y}`，與 player 的 `px` 一致；回傳整數像素位移）。
 - `player.ts`：`createPlayer(world, atlas, spawn): { update(dt, dir, solids): void; readonly px: { x: number; y: number } }`。
 - `constants.ts` 新增：`PLAYER_SPEED`、`PLAYER_ANIM_FPS`、`PLAYER_HITBOX`、角色朝向↔精靈列具名常數（如 `PLAYER_ROW_DOWN`）。
 - `engine.ts`：以 `app.ticker.add` 串接 `input.read` → `player.update` → `computeFollowOffset` → `world.position.set`；teardown 釋放 input、移除 ticker callback、`observer.disconnect()`。

@@ -51,3 +51,42 @@ export function computeCenterOffset(
     y: centerAxis(mapPx.h, viewportPx.h, scale),
   }
 }
+
+/**
+ * One axis of the player-follow offset. Centers the player, then clamps to
+ * `[viewport - scaledMap, 0]` so the viewport never reveals empty space past the
+ * map edges. When the scaled map is no larger than the viewport, falls back to
+ * the centered value (identical to `computeCenterOffset`).
+ */
+function followAxis(
+  playerCoord: number,
+  mapPx: number,
+  viewportPx: number,
+  scale: number,
+): number {
+  const scaled = mapPx * scale
+  if (scaled <= viewportPx) {
+    return centerAxis(mapPx, viewportPx, scale)
+  }
+  // Round to whole device pixels so the integer-scaled world stays sharp.
+  const ideal = Math.round(viewportPx / 2 - playerCoord * scale)
+  return clamp(ideal, viewportPx - scaled, 0)
+}
+
+/**
+ * The integer world-container offset that centers the player in the viewport,
+ * clamped to the map bounds. `playerPx` is the player's unscaled world position
+ * (a point, consistent with the player's `px`). On any axis where the scaled map
+ * fits within the viewport, the offset falls back to centering.
+ */
+export function computeFollowOffset(
+  playerPx: Offset,
+  viewportPx: Size,
+  mapPx: Size,
+  scale: number,
+): Offset {
+  return {
+    x: followAxis(playerPx.x, mapPx.w, viewportPx.w, scale),
+    y: followAxis(playerPx.y, mapPx.h, viewportPx.h, scale),
+  }
+}
