@@ -55,4 +55,23 @@ describe('nineSliceRects', () => {
     expect(rects[4]).toEqual({ sx: 16, sy: 16, sw: 16, sh: 16 }) // center
     expect(rects[8]).toEqual({ sx: 32, sy: 32, sw: 16, sh: 16 }) // bottom-right
   })
+
+  it.each([
+    { border: -1, label: 'negative' },
+    { border: 0, label: 'zero' },
+    { border: 1.5, label: 'fractional' },
+    { border: Number.NaN, label: 'NaN' },
+    { border: 25, label: 'larger than half the sheet' },
+  ])('throws for invalid $label border', ({ border }) => {
+    expect(() =>
+      nineSliceRects({
+        kind: 'nine-slice',
+        key: 'invalidDialog',
+        src: '/sprites/ui/dialog_box.png',
+        width: 48,
+        height: 48,
+        border,
+      }),
+    ).toThrow(RangeError)
+  })
 })

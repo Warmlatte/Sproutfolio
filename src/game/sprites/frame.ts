@@ -38,6 +38,19 @@ export function frameRect(sheet: GridSheet, index: number): Rect {
  */
 export function nineSliceRects(sheet: NineSlice): readonly Rect[] {
   const { width, height, border } = sheet
+  if (
+    !Number.isInteger(width) ||
+    width <= 0 ||
+    !Number.isInteger(height) ||
+    height <= 0 ||
+    !Number.isInteger(border) ||
+    border <= 0
+  ) {
+    throw new RangeError(
+      `nineSliceRects: sheet "${sheet.key}" requires positive integer width, height, and border`,
+    )
+  }
+
   const innerW = width - 2 * border
   const innerH = height - 2 * border
   if (innerW < 0 || innerH < 0) {

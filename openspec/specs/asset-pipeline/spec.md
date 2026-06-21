@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'm2-asset-pipeline'. Update Purpose after archive.
+Define the curated sprite asset set, engine-agnostic slice metadata, and development-only visual verification flow for the M2 asset pipeline.
 
 ## Requirements
 
@@ -176,12 +176,17 @@ tests:
 ---
 ### Requirement: Nine-slice rectangle computation
 
-The system SHALL compute the nine source rectangles of a `nine-slice` sheet via a pure function `nineSliceRects(sheet)` returning nine rectangles ordered top-left to bottom-right (rows then columns). Corner rectangles SHALL be `border × border`; edges and center SHALL span the remaining inner dimensions.
+The system SHALL compute the nine source rectangles of a `nine-slice` sheet via a pure function `nineSliceRects(sheet)` returning nine rectangles ordered top-left to bottom-right (rows then columns). Corner rectangles SHALL be `border × border`; edges and center SHALL span the remaining inner dimensions. The function SHALL require positive integer `width`, `height`, and `border` values and SHALL throw an explicit error for invalid values or borders larger than the sheet can contain.
 
 #### Scenario: Dialog box splits into nine regions
 
 - **WHEN** `nineSliceRects` is called on the `dialogBox` sheet (48×48, border 16)
 - **THEN** it returns nine 16×16 rectangles covering the full sheet in row-major order
+
+#### Scenario: Invalid nine-slice dimensions are rejected
+
+- **WHEN** `nineSliceRects` receives a sheet with non-positive, non-integer, or too-large dimensions or border values
+- **THEN** it throws an explicit error instead of returning invalid source rectangles
 
 ##### Example: corners and center of the 48×48 dialog box
 

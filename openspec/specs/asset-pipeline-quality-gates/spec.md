@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'harden-m2-asset-pipeline-review-fixes'. Update Purpose after archive.
+Define lightweight automated guards that keep the M2 sprite catalog, copied asset set, and dev-only verification viewer aligned with the asset pipeline contract.
 
 ## Requirements
 
@@ -126,7 +126,7 @@ tests:
 ---
 ### Requirement: Dev sprite viewer follows semantic UI tokens and stable rendering guards
 
-The development-only sprite viewer SHALL use existing semantic token utilities or CSS variables for visible error states and SHALL NOT hard-code raw hex colors. The viewer MUST surface invalid non-positive or non-integer scale values as visible errors before drawing, and nine-slice source rectangles MUST be stable across renders unless the dialog sheet contract changes.
+The development-only sprite viewer SHALL use existing semantic token utilities or CSS variables for visible error states and SHALL NOT hard-code raw hex colors. The viewer MUST surface invalid non-positive or non-integer scale values as visible errors before drawing, and nine-slice source rectangles MUST be stable across renders unless the dialog sheet contract changes. Viewer canvas dimensions MUST be derived by a pure calculation from source rectangles, integer scale, and gap values so automated tests can guard layout math without depending on browser canvas rendering.
 
 #### Scenario: Viewer error states use semantic tokens
 

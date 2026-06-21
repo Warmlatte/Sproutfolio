@@ -26,6 +26,20 @@ export function isPositiveIntegerScale(scale: number): boolean {
   return Number.isInteger(scale) && scale > 0
 }
 
+export function spriteCanvasDimensions(
+  rects: readonly Rect[],
+  scale: number,
+  gap: number,
+): { width: number; height: number } {
+  const width =
+    rects.reduce((sum, r) => sum + r.sw * scale + gap, 0) - gap
+  const height = rects.reduce((max, r) => Math.max(max, r.sh * scale), 0)
+  return {
+    width: Math.max(width, 1),
+    height: Math.max(height, 1),
+  }
+}
+
 export function SpriteCanvas({ src, rects, scale, gap = 8 }: SpriteCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -95,14 +109,12 @@ export function SpriteCanvas({ src, rects, scale, gap = 8 }: SpriteCanvasProps) 
     )
   }
 
-  const width =
-    rects.reduce((sum, r) => sum + r.sw * scale + gap, 0) - gap
-  const height = rects.reduce((max, r) => Math.max(max, r.sh * scale), 0)
+  const { width, height } = spriteCanvasDimensions(rects, scale, gap)
   return (
     <canvas
       ref={canvasRef}
-      width={Math.max(width, 1)}
-      height={Math.max(height, 1)}
+      width={width}
+      height={height}
       style={{ imageRendering: 'pixelated' }}
     />
   )
