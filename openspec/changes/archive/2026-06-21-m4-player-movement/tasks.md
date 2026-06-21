@@ -18,7 +18,7 @@
 ## 5. 角色實體（player.ts）
 
 - [x] 5.1 實作 `player.ts` 的移動與生成，落實「採自由像素速度移動而非格子對齊」：角色為 `world` 子物件，於出生點 `spawn` 生成，`update(dt, dir, solids)` 以 `dir * PLAYER_SPEED * dt` 推進後交 `resolveMove` 修正。滿足需求「Player moves with free pixel velocity」。驗證：`vite dev` 手動走動，角色從出生點起步、撞木屋/樹/水被擋、不出界、對角不加速。
-- [ ] 5.2 實作 `player.ts` 的四向動畫，落實「遊戲迴圈用 Pixi app.ticker，動畫用 AnimatedSprite」中的動畫部分：以 `AnimatedSprite` 依朝向切走路 `textures[]`、移動 `play()`（`animationSpeed` 換算 `PLAYER_ANIM_FPS`）、靜止 `gotoAndStop()` 待機幀；朝向↔列取自常數。滿足需求「Player plays four-direction walk and idle animations」。驗證：先於 `#sprites` debug 頁確認列序並回填常數，`vite dev` 手動確認四向走/待機動畫正確。
+- [x] 5.2 實作 `player.ts` 的四向動畫，落實「遊戲迴圈用 Pixi app.ticker，動畫用 AnimatedSprite」中的動畫部分：以 `AnimatedSprite` 依朝向切走路 `textures[]`、移動 `play()`（`animationSpeed` 換算 `PLAYER_ANIM_FPS`）、靜止 `gotoAndStop()` 待機幀；朝向↔列取自常數。滿足需求「Player plays four-direction walk and idle animations」。驗證：先於 `#sprites` debug 頁確認列序並回填常數，`vite dev` 手動確認四向走/待機動畫正確。
 
 ## 6. 引擎整合（engine.ts）
 
@@ -28,4 +28,4 @@
 
 ## 7. 驗收
 
-- [ ] 7.1 全量單元測試與手動走動驗收：`npx vitest run` 全綠（input/collision/camera/engine），並以 `vite dev` 逐項確認四向移動+動畫、撞木屋/樹/水被擋、不出界、相機跟隨不露地圖外，對齊 design 的驗收標準。
+- [x] 7.1 全量單元測試與手動走動驗收：`npx vitest run` 全綠（input/collision/camera/engine），並以 `vite dev` 逐項確認四向移動+動畫、撞木屋/樹/水被擋、不出界、相機跟隨不露地圖外，對齊 design 的驗收標準。
