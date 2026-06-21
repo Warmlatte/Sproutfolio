@@ -65,23 +65,23 @@ export interface InputSource {
 export function createInput(): InputSource {
   const pressed = new Set<string>()
 
-  const onKeyDown = (event: { code: string }): void => {
+  const onKeyDown = (event: KeyboardEvent): void => {
     if (MOVEMENT_KEYS.has(event.code)) pressed.add(event.code)
   }
-  const onKeyUp = (event: { code: string }): void => {
+  const onKeyUp = (event: KeyboardEvent): void => {
     pressed.delete(event.code)
   }
 
-  window.addEventListener('keydown', onKeyDown as EventListener)
-  window.addEventListener('keyup', onKeyUp as EventListener)
+  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
 
   return {
     read(): Direction {
       return directionFromKeys(pressed)
     },
     destroy(): void {
-      window.removeEventListener('keydown', onKeyDown as EventListener)
-      window.removeEventListener('keyup', onKeyUp as EventListener)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
       // Clear held keys so a lingering press can't leak past teardown.
       pressed.clear()
     },
