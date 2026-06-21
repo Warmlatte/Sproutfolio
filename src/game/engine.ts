@@ -49,15 +49,27 @@ function showError(container: HTMLElement, error: unknown): void {
     'height:100%',
     'padding:16px',
     'box-sizing:border-box',
-    'background:#3b2a33',
-    'color:#e8cfa6',
-    'font-family:monospace',
-    'font-size:14px',
+    'background:var(--color-outline)',
+    'color:var(--color-text-invert)',
+    'font-family:var(--font-pixel)',
+    'font-size:var(--text-pixel-sm)',
     'text-align:center',
     'image-rendering:pixelated',
   ].join(';')
   panel.textContent = `⚠ 農場載入失敗：${message}`
-  container.appendChild(panel)
+  container.replaceChildren(panel)
+}
+
+function destroyApp(app: Application | null): null {
+  if (app) {
+    app.destroy(true, { children: true })
+  }
+  return null
+}
+
+function destroyAtlas(atlas: TextureAtlas | null): null {
+  atlas?.destroy()
+  return null
 }
 
 /**
@@ -93,19 +105,23 @@ export function createEngine(container: HTMLElement): EngineHandle {
       const application = new Application()
       await application.init({
         resizeTo: container,
-        background: '#7fb65a',
+        backgroundAlpha: 0,
         antialias: false,
         roundPixels: true,
       })
       if (destroyed) {
-        application.destroy(true, { children: true })
+        destroyApp(application)
         return
       }
       app = application
       container.appendChild(app.canvas)
 
-      atlas = await loadTextureAtlas(SCENE_SHEETS)
-      if (destroyed) return
+      const loadedAtlas = await loadTextureAtlas(SCENE_SHEETS)
+      if (destroyed) {
+        destroyAtlas(loadedAtlas)
+        return
+      }
+      atlas = loadedAtlas
 
       const world = new Container()
       world.scale.set(WORLD_SCALE)
@@ -126,6 +142,10 @@ export function createEngine(container: HTMLElement): EngineHandle {
       window.addEventListener('resize', recenter)
       detachResize = () => window.removeEventListener('resize', recenter)
     } catch (error: unknown) {
+      detachResize?.()
+      detachResize = null
+      atlas = destroyAtlas(atlas)
+      app = destroyApp(app)
       if (!destroyed) showError(container, error)
     }
   }
@@ -137,12 +157,8 @@ export function createEngine(container: HTMLElement): EngineHandle {
       destroyed = true
       detachResize?.()
       detachResize = null
-      atlas?.destroy()
-      atlas = null
-      if (app) {
-        app.destroy(true, { children: true })
-        app = null
-      }
+      atlas = destroyAtlas(atlas)
+      app = destroyApp(app)
     },
   }
 }
