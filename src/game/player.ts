@@ -69,12 +69,31 @@ export interface Player {
 
 const MAP_BOUNDS: Bounds = { w: MAP_COLS * TILE_SIZE, h: MAP_ROWS * TILE_SIZE }
 
+// The sprite is drawn from the feet point (anchor 0.5, 1.0): it extends
+// `frameW/2` to each side and `frameH` upward. The feet box keeps the FEET in
+// the map, but the taller sprite would still overflow the edges — and the
+// map-clamped camera then hides the overflow. So the feet point is additionally
+// clamped to keep the whole sprite frame inside the map (always camera-visible).
+const SPRITE_HALF_W = catalog.player.frameW / 2
+const SPRITE_H = catalog.player.frameH
+
+const clamp = (value: number, lo: number, hi: number): number =>
+  Math.min(Math.max(value, lo), hi)
+
+/** Clamps a feet point so the whole sprite frame stays within the map bounds. */
+function clampSpriteToMap(point: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: clamp(point.x, SPRITE_HALF_W, MAP_BOUNDS.w - SPRITE_HALF_W),
+    y: clamp(point.y, SPRITE_H, MAP_BOUNDS.h),
+  }
+}
+
 /** Feet point for an anchor: the tile's horizontal center and bottom edge. */
 function feetOf(anchor: Anchor): { x: number; y: number } {
-  return {
+  return clampSpriteToMap({
     x: anchor.col * TILE_SIZE + TILE_SIZE / 2,
     y: anchor.row * TILE_SIZE + TILE_SIZE,
-  }
+  })
 }
 
 /** Builds the four walk-frame textures for one facing row of the player sheet. */
@@ -128,10 +147,10 @@ export function createPlayer(
       h: PLAYER_HITBOX.h,
     }
     const resolved = resolveMove(box, dx, dy, solids, MAP_BOUNDS)
-    px = {
+    px = clampSpriteToMap({
       x: resolved.x + PLAYER_HITBOX.w / 2,
       y: resolved.y + PLAYER_HITBOX.h,
-    }
+    })
     sprite.position.set(px.x, px.y)
 
     const nextFacing = facingFromDirection(dir, facing)

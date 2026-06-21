@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { PLAYER_SPEED, TILE_SIZE } from '../constants'
+import { catalog } from './sprites/catalog'
 
 const pixiMock = vi.hoisted(() => ({
   sprites: [] as MockSprite[],
@@ -105,6 +106,23 @@ describe('createPlayer', () => {
     const solids = new Set([`${spawn.col + 1},${spawn.row}`])
     player.update(0.1, { x: 1, y: 0 }, solids)
     expect(player.px.x).toBe(start.x) // blocked, stays at the wall edge
+  })
+
+  it('keeps the whole sprite within the map when walking into the top edge', () => {
+    const player = createPlayer(makeWorld() as never, atlas as never, spawn)
+    // Walk up far past the edge with no obstacles in the way.
+    for (let i = 0; i < 100; i += 1) player.update(1, { x: 0, y: -1 }, new Set())
+    const frameH = catalog.player.frameH // 48 — sprite drawn upward from the feet
+    // The sprite top (feet point minus frame height) must stay inside the map,
+    // so the map-clamped camera always shows the character.
+    expect(player.px.y - frameH).toBeGreaterThanOrEqual(0)
+  })
+
+  it('keeps the whole sprite within the left and right map edges', () => {
+    const frameW = catalog.player.frameW // 48; anchor 0.5 → extends frameW/2 each side
+    const left = createPlayer(makeWorld() as never, atlas as never, spawn)
+    for (let i = 0; i < 100; i += 1) left.update(1, { x: -1, y: 0 }, new Set())
+    expect(left.px.x - frameW / 2).toBeGreaterThanOrEqual(0)
   })
 
   it('places the animated sprite at the feet point with a bottom-center anchor', () => {

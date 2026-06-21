@@ -67,6 +67,8 @@ M3 的 recenter 掛 `window` 的 `resize`，但渲染器用 `resizeTo: container
 
 **失敗模式**：素材載入失敗沿用 M3 的像素風錯誤面板（不靜默）。角色朝向↔列對應未確認前，以 `constants.ts` 具名常數承載暫定值，於 `#sprites` 頁確認後只改常數、不動邏輯。
 
+**邊界與精靈尺寸**：碰撞用 16×10 腳底框（貼障礙手感），但精靈為 48×48、anchor `0.5,1.0`（由腳底點向上、左右各延伸）。若只夾制腳底框，較大的精靈本體會溢出地圖邊緣，而夾在地圖內的相機會把溢出部分藏住（向上走時最嚴重，整個身體沒入上緣 → 看不見角色）。因此 `player` 於 resolveMove 之後再以精靈框尺寸夾制腳底點（`x∈[frameW/2, mapW-frameW/2]`、`y∈[frameH, mapH]`），確保整個精靈框留在地圖內、相機恆能完整顯示角色。
+
 **驗收標準**：
 
 - Vitest 單元測試涵蓋 `directionFromKeys`（八方向 + 正規化 + 無輸入）、`resolveMove`（撞牆貼齊、另一軸滑動、邊界夾制）、`buildSolidSet`（障礙層收格、可走層排除）、`computeFollowOffset`（置中、邊界夾制、地圖小於視窗退回置中）。

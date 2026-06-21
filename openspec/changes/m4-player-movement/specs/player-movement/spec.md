@@ -43,6 +43,13 @@ The player SHALL move in unscaled world coordinates as a child of the world cont
 - **WHEN** the player is created
 - **THEN** its position is the pixel position of the map's `spawn` anchor
 
+#### Scenario: The whole sprite stays within the map at the edges
+
+- **WHEN** the player walks into a map edge (the feet box reaches the boundary)
+- **THEN** the feet point is clamped so the entire sprite frame (which is drawn
+  upward from the feet and wider than the feet box) stays within the map, so the
+  map-clamped camera always keeps the character fully visible
+
 ### Requirement: Player plays four-direction walk and idle animations
 
 The player SHALL render via a Pixi `AnimatedSprite`. While moving, it SHALL play the walk animation for the facing derived from the current direction at `PLAYER_ANIM_FPS`; while idle, it SHALL stop on the idle frame for that facing. The facing-to-spritesheet-row mapping SHALL be held in named constants so it can be corrected after visual confirmation without changing logic.
