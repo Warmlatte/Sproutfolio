@@ -11,15 +11,13 @@ export const TILE_SIZE = 16
  * engine now derives the live scale per viewport width via `computeWorldScale`. */
 export const WORLD_SCALE = 3
 
-// --- Responsive scaling breakpoints (M5) ---
-// Fixed width breakpoints map to integer world-scale tiers so pixel art stays
-// crisp at every size. Inclusive lower bounds: width === breakpoint → next tier.
+// --- Responsive scaling (M5) ---
+// The world scale is derived per viewport so the landscape map always covers the
+// viewport (see computeWorldScale): the camera then has room to follow and never
+// reveals empty space past the map edges, including on tall portrait phones.
 
-/** Below this container width, the world renders at 2× (phone portrait). */
-export const SCALE_BP_SM = 640
-
-/** At/above SM and below this width → 3×; at/above this width → 4× (desktop). */
-export const SCALE_BP_MD = 1024
+/** Minimum integer world scale, keeping pixel art chunky on tiny screens. */
+export const MIN_WORLD_SCALE = 2
 
 // --- Touch controls (M5) ---
 // On-screen overlay sizes in CSS pixels (not world pixels). Integers keep the

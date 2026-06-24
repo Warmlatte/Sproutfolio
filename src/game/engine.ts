@@ -167,9 +167,10 @@ export function createEngine(container: HTMLElement, touch: InputSource): Engine
       atlas = loadedAtlas
 
       const world = new Container()
-      // Integer world scale derived from the container width; held in a local so
+      // Integer world scale derived from the container size (cover, so the
+      // landscape map fills tall portrait viewports too); held in a local so
       // resize can recompute it and the camera can follow at the live scale.
-      let currentScale = computeWorldScale(container.clientWidth)
+      let currentScale = computeWorldScale(container.clientWidth, container.clientHeight)
       world.scale.set(currentScale)
       app.stage.addChild(world)
       buildFarmScene(world, atlas)
@@ -198,7 +199,7 @@ export function createEngine(container: HTMLElement, touch: InputSource): Engine
       // Resize also re-derives the integer world scale for the new width.
       const resizeObserver = new ResizeObserver(() => {
         app?.resize()
-        currentScale = computeWorldScale(container.clientWidth)
+        currentScale = computeWorldScale(container.clientWidth, container.clientHeight)
         world.scale.set(currentScale)
         follow()
       })

@@ -1,20 +1,27 @@
 /**
- * Responsive world scaling (M5). Maps a container width to an integer world-scale
- * multiplier using fixed breakpoints, so pixel art stays crisp at every size.
+ * Responsive world scaling (M5). Derives an integer world-scale multiplier large
+ * enough to COVER the viewport, so the camera always has room to follow and the
+ * viewport never reveals empty space past the map edges.
  *
- * Pure (no DOM): the engine reads `container.clientWidth` and passes it in, both
- * on init and on resize. Breakpoints are inclusive lower bounds — a width exactly
- * equal to a breakpoint resolves to the higher tier.
+ * The farm map is landscape (448×288). A portrait phone is bound by height, a
+ * wide desktop by width — a width-only rule under-scales portrait and exposes the
+ * map's top/bottom edges. Taking the cover ratio of the more-constrained axis and
+ * rounding up fixes both. Pure (no DOM): the engine reads the container size and
+ * passes it in, on init and on resize.
  */
 
-import { SCALE_BP_SM, SCALE_BP_MD } from '../constants'
+import { MAP_COLS, MAP_ROWS, MIN_WORLD_SCALE, TILE_SIZE } from '../constants'
+
+const MAP_W_PX = MAP_COLS * TILE_SIZE
+const MAP_H_PX = MAP_ROWS * TILE_SIZE
 
 /**
- * Resolves a container width (px) to an integer world-scale multiplier:
- * `< SCALE_BP_SM → 2`, `< SCALE_BP_MD → 3`, otherwise `4`.
+ * Resolves a viewport size (px) to the smallest integer world-scale that covers
+ * both dimensions: `ceil(max(viewportW / MAP_W_PX, viewportH / MAP_H_PX))`,
+ * floored at `MIN_WORLD_SCALE`. Guarantees `MAP_*_PX × scale >= viewport`, so the
+ * camera follow never falls back to centering with exposed edges.
  */
-export function computeWorldScale(width: number): number {
-  if (width < SCALE_BP_SM) return 2
-  if (width < SCALE_BP_MD) return 3
-  return 4
+export function computeWorldScale(viewportW: number, viewportH: number): number {
+  const cover = Math.max(viewportW / MAP_W_PX, viewportH / MAP_H_PX)
+  return Math.max(MIN_WORLD_SCALE, Math.ceil(cover))
 }

@@ -385,10 +385,10 @@ describe('createEngine', () => {
     expect(touch.consumeInteract).toHaveBeenCalled()
   })
 
-  it('sets the initial world scale from the container width', async () => {
+  it('sets the initial world scale from the container size', async () => {
     const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
     textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
-    // makeContainer() is 320px wide → computeWorldScale(320) === 2.
+    // makeContainer() is 320×240 → cover ceil(max(320/448, 240/288)) floored at 2 → 2.
     const container = makeContainer()
     const { createEngine } = await import('./engine')
 
@@ -399,7 +399,7 @@ describe('createEngine', () => {
     expect(world.scale.set).toHaveBeenCalledWith(2)
   })
 
-  it('recomputes the world scale when the container width crosses a breakpoint', async () => {
+  it('recomputes the cover world scale when the container size changes', async () => {
     const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
     textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
     const container = makeContainer()
@@ -414,12 +414,12 @@ describe('createEngine', () => {
       clientWidth: number
       clientHeight: number
     }
-    // 320 → 2×; widen to 1200 → computeWorldScale(1200) === 4.
+    // 320×240 → 2×; resize to 1200×800 → ceil(max(1200/448, 800/288)) = ceil(2.78) = 3.
     mutableContainer.clientWidth = 1200
     mutableContainer.clientHeight = 800
 
     resizeMock.instances[0]?.trigger()
 
-    expect(world.scale.set).toHaveBeenCalledWith(4)
+    expect(world.scale.set).toHaveBeenCalledWith(3)
   })
 })

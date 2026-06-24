@@ -1,11 +1,11 @@
-## 1. 常數與斷點基礎
+## 1. 常數基礎
 
-- [x] 1.1 於 `src/constants.ts` 新增整數常數 `SCALE_BP_SM = 640`、`SCALE_BP_MD = 1024`、`JOYSTICK_BASE_PX`（~120）、`JOYSTICK_THUMB_PX`、`JOYSTICK_DEADZONE_PX = 12`、`INTERACT_BTN_PX`（~64），並保留 `WORLD_SCALE = 3`。完成時：下游 `scale.ts`、`input.ts`、`Joystick.tsx` 可匯入這些常數。驗證：`pnpm tsc --noEmit` 型別通過，值皆為整數（人工檢視）。
+- [x] 1.1 於 `src/constants.ts` 新增整數常數 `MIN_WORLD_SCALE = 2`、`JOYSTICK_BASE_PX`（~120）、`JOYSTICK_THUMB_PX`、`JOYSTICK_DEADZONE_PX = 12`、`INTERACT_BTN_PX`（~64），並保留 `WORLD_SCALE = 3`。（cover 改版後移除 `SCALE_BP_SM/MD`。）完成時：下游 `scale.ts`、`input.ts`、`Joystick.tsx` 可匯入這些常數。驗證：`pnpm tsc --noEmit` 型別通過，值皆為整數（人工檢視）。
 
 ## 2. RWD 整數縮放（純函數，TDD）
 
-- [x] 2.1 先在 `src/game/scale.test.ts` 寫失敗測試覆蓋 `computeWorldScale` 的斷點表（375→2、639→2、640→3、1023→3、1024→4、1440→4，含等號邊界）。對應 spec `responsive-scaling`「World scale resolves to an integer multiple from viewport width」。驗證：`pnpm vitest run src/game/scale.test.ts` 先 RED。
-- [x] 2.2 於 `src/game/scale.ts` 實作 `computeWorldScale(width)`：`< SCALE_BP_SM → 2`、`< SCALE_BP_MD → 3`、否則 `4`，回傳整數、純函數無 DOM。驗證：2.1 測試轉 GREEN。
+- [x] 2.1 先在 `src/game/scale.test.ts` 寫失敗測試覆蓋 `computeWorldScale` 的 cover 表（直立高吃緊 390×844→3、寬螢幕寬吃緊 1920×1080→5、迷你 320×240→2 夾 MIN，及 cover 不變式）。對應 spec `responsive-scaling`「World scale resolves to an integer multiple that covers the viewport」。驗證：`pnpm vitest run src/game/scale.test.ts` 先 RED。
+- [x] 2.2 於 `src/game/scale.ts` 實作 `computeWorldScale(viewportW, viewportH)`：`max(MIN_WORLD_SCALE, ceil(max(viewportW/MAP_W_PX, viewportH/MAP_H_PX)))`，回傳整數、純函數無 DOM、保證蓋滿視窗。驗證：2.1 測試轉 GREEN。
 
 ## 3. 搖桿向量與方向合併（純函數，TDD）
 

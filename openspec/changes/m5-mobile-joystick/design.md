@@ -37,8 +37,12 @@ M4 已完成鍵盤操控 + 相機跟隨。輸入層 `src/game/input.ts` 的 `rea
 **D3：edge-triggered 互動**
 `InputSource` 新增 `consumeInteract(): boolean`——自上次呼叫以來若曾按下互動則回 `true` 並清旗標，否則 `false`。確保「按一下＝觸發一次」，避免按住連發。鍵盤監聽 `Space`（`event.code === 'Space'`），觸控由 `triggerInteract()` 設旗標。
 
-**D4：固定斷點整數倍縮放**
-`computeWorldScale(width)`：`< SCALE_BP_SM → 2`、`< SCALE_BP_MD → 3`、否則 `4`。固定斷點而非連續比例 → 保證整數倍、像素清晰、可預測、可單元測試。`WORLD_SCALE = 3` 保留為桌機/預設參考值，與中段回傳一致。
+**D4：Cover 蓋滿的整數倍縮放（修正自固定寬度斷點）**
+`computeWorldScale(viewportW, viewportH)`：取 `ceil(max(viewportW/MAP_W_PX, viewportH/MAP_H_PX))`，下限 `MIN_WORLD_SCALE = 2`。
+- 原以固定寬度斷點（2×/3×/4×）只看寬度，但農場地圖是橫向長條（448×288），直立手機（窄寬高長）以寬度挑倍率會選太小（2×），導致縱向蓋不滿、相機 `followAxis` 退回置中而**露出地圖上下邊界**（M5 實作驗收發現）。
+- 改以 cover 比例：取較吃緊軸（直立看高、寬螢幕看寬）所需的最小整數倍，`ceil` 保證 `MAP_*_PX × scale ≥ viewport`，相機永遠有空間跟隨、不露空白。下限 2× 維持小螢幕像素夠粗。
+- 仍是整數倍、純函數、可單元測試。代價：大螢幕倍率較高（如 1080p ≈ 5×），換取「走遍全圖、不露邊界」的規格優先。
+- `WORLD_SCALE = 3` 保留為預設參考值（不再作為斷點）；`SCALE_BP_SM/MD` 已移除。
 
 **D5：搖桿造型例外**
 CLAUDE.md「禁止 border-radius」係針對沿用 9-slice 的面板/邊框。虛擬搖桿是觸控控制項、圓形為其固有造型，style-guide 未涵蓋此控制項，故設計明示此例外。樣式用純 CSS + semantic token（半透明），`position: fixed` + `env(safe-area-inset-*)` 定位，resize 由 CSS 處理免額外 JS 重算位置。
@@ -46,10 +50,11 @@ CLAUDE.md「禁止 border-radius」係針對沿用 9-slice 的面板/邊框。�
 ## Implementation Contract
 
 ### src/game/scale.ts
-- `computeWorldScale(width: number): number` — 回傳整數縮放倍率。
-  - `width < SCALE_BP_SM` → `2`；`SCALE_BP_SM <= width < SCALE_BP_MD` → `3`；`width >= SCALE_BP_MD` → `4`。
-  - 斷點為等號邊界：`width === SCALE_BP_SM` 回 `3`、`width === SCALE_BP_MD` 回 `4`。
-- 驗收：`src/game/scale.test.ts` 覆蓋各斷點與等號邊界，回傳值皆為整數。
+- `computeWorldScale(viewportW: number, viewportH: number): number` — 回傳能蓋滿視窗的整數縮放倍率。
+  - `cover = max(viewportW / MAP_W_PX, viewportH / MAP_H_PX)`（`MAP_W_PX = MAP_COLS × TILE_SIZE = 448`、`MAP_H_PX = MAP_ROWS × TILE_SIZE = 288`）。
+  - 回傳 `max(MIN_WORLD_SCALE, ceil(cover))`，`MIN_WORLD_SCALE = 2`。
+  - 保證 `MAP_W_PX × scale ≥ viewportW` 且 `MAP_H_PX × scale ≥ viewportH`（相機永遠可跟隨、不露邊界）。
+- 驗收：`src/game/scale.test.ts` 覆蓋直立（高吃緊）/寬螢幕（寬吃緊）/迷你（夾 MIN）案例，回傳值皆為整數，且驗證 cover 不變式。
 
 ### src/game/input.ts
 - `directionFromVector(dx, dy): Direction` — 搖桿拖曳位移（相對底座中心）→ 正規化方向。
@@ -65,7 +70,7 @@ CLAUDE.md「禁止 border-radius」係針對沿用 9-slice 的面板/邊框。�
 
 ### src/game/engine.ts
 - 簽章改為 `createEngine(container: HTMLElement, touch: InputSource): EngineHandle`。
-- 動態縮放：移除寫死的 `world.scale.set(WORLD_SCALE)`；以 `computeWorldScale(container.clientWidth)` 算初始 scale 並 `world.scale.set(scale)`；既有 `ResizeObserver` 觸發時重算 scale → 更新 `world.scale` 與 `follow()`。以區域變數持有當前 scale 傳給 `follow()`（`computeFollowOffset` 已吃 scale 參數，免改）。
+- 動態縮放：移除寫死的 `world.scale.set(WORLD_SCALE)`；以 `computeWorldScale(container.clientWidth, container.clientHeight)` 算初始 scale 並 `world.scale.set(scale)`；既有 `ResizeObserver` 觸發時重算 scale → 更新 `world.scale` 與 `follow()`。以區域變數持有當前 scale 傳給 `follow()`（`computeFollowOffset` 已吃 scale 參數，免改）。
 - 合併輸入：tick 內 `const dir = mergeDirections(keyboard.read(), touch.read())` 餵入 `player.update`。
 - 互動：tick 內 `if (keyboard.consumeInteract() || touch.consumeInteract()) { /* M5 暫以 console 驗證 */ }`。
 - 卸載：`stopLoop()` 仍只銷毀引擎自有鍵盤 `InputSource`，不銷毀共享 touch。
@@ -81,7 +86,7 @@ CLAUDE.md「禁止 border-radius」係針對沿用 9-slice 的面板/邊框。�
 - `useEffect` 建立共享 `touch = createTouchInput()` → `createEngine(container, touch)` → 渲染 `<Joystick touch={touch} />`；cleanup 先 `engine.destroy()` 再 `touch.destroy()`。
 
 ### src/constants.ts
-- 新增（皆整數）：`SCALE_BP_SM`、`SCALE_BP_MD`、`JOYSTICK_BASE_PX`（~120）、`JOYSTICK_THUMB_PX`、`JOYSTICK_DEADZONE_PX`、`INTERACT_BTN_PX`（~64）。`WORLD_SCALE = 3` 保留。
+- 新增（皆整數）：`MIN_WORLD_SCALE`（2）、`JOYSTICK_BASE_PX`（~120）、`JOYSTICK_THUMB_PX`、`JOYSTICK_DEADZONE_PX`、`INTERACT_BTN_PX`（~64）。`WORLD_SCALE = 3` 保留為參考值。（cover 改版後移除 `SCALE_BP_SM/MD`。）
 
 **範圍邊界**：In scope — 上列檔案的輸入、縮放、觸控疊層、共享物件生命週期。Out of scope — 互動面板、互動偵測、彩蛋（M6/M7/M8）；類比變速。
 
