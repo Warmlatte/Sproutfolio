@@ -217,6 +217,7 @@ export function createEngine(container: HTMLElement, touch: InputSource): Engine
         player.update(dt, direction, solids)
         if (keyboard?.consumeInteract() || touch.consumeInteract()) {
           // M5 has no interaction panel yet (M7); log the signal to verify wiring.
+          // TODO(M7): replace this temporary stub with the real interaction panel.
           console.info('[interact] triggered')
         }
         follow()

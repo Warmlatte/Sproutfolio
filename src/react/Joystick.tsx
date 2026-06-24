@@ -68,7 +68,7 @@ export function Joystick({ touch }: JoystickProps) {
 
     // Clamp the thumb visual within the base radius (direction unchanged).
     const magnitude = Math.hypot(dx, dy)
-    if (magnitude > THUMB_CLAMP_RADIUS && magnitude > 0) {
+    if (magnitude > THUMB_CLAMP_RADIUS) {
       const k = THUMB_CLAMP_RADIUS / magnitude
       setThumbOffset({ x: dx * k, y: dy * k })
     } else {
