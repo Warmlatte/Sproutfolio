@@ -25,6 +25,12 @@ describe('directionFromVector', () => {
     expect(dir.y).toBeCloseTo(y)
   })
 
+  it('treats a displacement exactly at the deadzone radius as no movement', () => {
+    // Boundary: magnitude === JOYSTICK_DEADZONE_PX (12). The guard uses `<=`, so
+    // the radius itself still reads as idle — locks the inclusive contract.
+    expect(directionFromVector(12, 0)).toEqual({ x: 0, y: 0 })
+  })
+
   it('returns magnitude 1 for any displacement past the deadzone', () => {
     const dir = directionFromVector(30, 30)
     expect(Math.hypot(dir.x, dir.y)).toBeCloseTo(1)
