@@ -35,4 +35,4 @@
 ## 7. GameCanvas 接線與整體驗收
 
 - [x] 7.1 於 `src/react/GameCanvas.tsx` 的 `useEffect` 建立共享 `touch = createTouchInput()` → `createEngine(container, touch)` → 渲染 `<Joystick touch={touch} />`；cleanup 先 `engine.destroy()` 再 `touch.destroy()`。完成時：搖桿輸出經共享物件驅動引擎與相機。驗證：`pnpm tsc --noEmit` 通過、`pnpm vitest run` 全綠。
-- [ ] 7.2 `vite dev` 手動走動驗收（對應 design 第十節）：觸控八方向移動與鍵盤共用介面、直立窄視窗可走遍全圖、縮放整數倍像素清晰且 resize 後相機正確、非觸控顯示鍵盤提示、互動鈕於 console 出現訊號。驗證：逐項目視確認並記錄於對應 GitHub issue comment。
+- [x] 7.2 `vite dev` 手動走動驗收（對應 design 第十節）：觸控八方向移動與鍵盤共用介面、直立窄視窗可走遍全圖、縮放整數倍像素清晰且 resize 後相機正確、非觸控顯示鍵盤提示、互動鈕於 console 出現訊號。驗證：逐項目視確認並記錄於對應 GitHub issue comment。
