@@ -1,8 +1,42 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createInput, directionFromKeys } from './input'
+import {
+  createInput,
+  createTouchInput,
+  directionFromKeys,
+  directionFromVector,
+  mergeDirections,
+} from './input'
 
 const INV_SQRT2 = 1 / Math.sqrt(2)
+
+describe('directionFromVector', () => {
+  // Spec `player-movement` example table (JOYSTICK_DEADZONE_PX = 12).
+  it.each([
+    { dx: 0, dy: 0, x: 0, y: 0, note: 'idle' },
+    { dx: 6, dy: 0, x: 0, y: 0, note: 'within deadzone' },
+    { dx: 40, dy: 0, x: 1, y: 0, note: 'right, full speed' },
+    { dx: 0, dy: -40, x: 0, y: -1, note: 'up, full speed' },
+    { dx: 30, dy: 30, x: INV_SQRT2, y: INV_SQRT2, note: 'normalized diagonal' },
+    { dx: 100, dy: 0, x: 1, y: 0, note: 'far past deadzone, still unit' },
+  ])('maps displacement ($dx, $dy) to ($x, $y) — $note', ({ dx, dy, x, y }) => {
+    const dir = directionFromVector(dx, dy)
+    expect(dir.x).toBeCloseTo(x)
+    expect(dir.y).toBeCloseTo(y)
+  })
+
+  it('returns magnitude 1 for any displacement past the deadzone', () => {
+    const dir = directionFromVector(30, 30)
+    expect(Math.hypot(dir.x, dir.y)).toBeCloseTo(1)
+  })
+
+  it('returns a new object and does not depend on input mutation', () => {
+    const a = directionFromVector(40, 0)
+    const b = directionFromVector(40, 0)
+    expect(a).not.toBe(b)
+    expect(a).toEqual(b)
+  })
+})
 
 describe('directionFromKeys', () => {
   it('returns the zero vector when no keys are pressed', () => {
@@ -42,6 +76,80 @@ describe('directionFromKeys', () => {
 
   it('ignores unrelated keys', () => {
     expect(directionFromKeys(new Set(['Space', 'Enter']))).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('mergeDirections', () => {
+  // Spec `player-movement` example table: keyboard wins when non-zero.
+  it.each([
+    { kb: { x: 1, y: 0 }, touch: { x: 0, y: 0 }, merged: { x: 1, y: 0 }, note: 'keyboard only' },
+    { kb: { x: 0, y: 0 }, touch: { x: 0, y: 1 }, merged: { x: 0, y: 1 }, note: 'touch only' },
+    { kb: { x: 1, y: 0 }, touch: { x: 0, y: 1 }, merged: { x: 1, y: 0 }, note: 'keyboard priority' },
+    { kb: { x: 0, y: 0 }, touch: { x: 0, y: 0 }, merged: { x: 0, y: 0 }, note: 'both idle' },
+  ])('merges kb=$kb touch=$touch → $merged ($note)', ({ kb, touch, merged }) => {
+    expect(mergeDirections(kb, touch)).toEqual(merged)
+  })
+
+  it('returns a new object and does not mutate either input', () => {
+    const kb = { x: 1, y: 0 }
+    const touch = { x: 0, y: 1 }
+    const merged = mergeDirections(kb, touch)
+    expect(merged).not.toBe(kb)
+    expect(merged).not.toBe(touch)
+    expect(kb).toEqual({ x: 1, y: 0 })
+    expect(touch).toEqual({ x: 0, y: 1 })
+  })
+})
+
+describe('createTouchInput', () => {
+  it('reads the zero vector before any direction is set', () => {
+    const touch = createTouchInput()
+    expect(touch.read()).toEqual({ x: 0, y: 0 })
+    touch.destroy()
+  })
+
+  it('reflects setDirection on the next read as a new object copy', () => {
+    const touch = createTouchInput()
+    const dir = { x: 1, y: 0 }
+    touch.setDirection(dir)
+
+    const read = touch.read()
+    expect(read).toEqual({ x: 1, y: 0 })
+    // A new object, not the caller's reference (no shared mutation).
+    expect(read).not.toBe(dir)
+
+    touch.destroy()
+  })
+
+  it('does not mutate the caller object when it later changes', () => {
+    const touch = createTouchInput()
+    const dir = { x: 1, y: 0 }
+    touch.setDirection(dir)
+    // Mutating the caller's object must not affect the stored direction.
+    ;(dir as { x: number }).x = -9
+    expect(touch.read()).toEqual({ x: 1, y: 0 })
+    touch.destroy()
+  })
+
+  it('edge-triggers interaction: triggerInteract then consume true once', () => {
+    const touch = createTouchInput()
+    touch.triggerInteract()
+    expect(touch.consumeInteract()).toBe(true)
+    expect(touch.consumeInteract()).toBe(false)
+    touch.destroy()
+  })
+
+  it('reports no interaction before any trigger', () => {
+    const touch = createTouchInput()
+    expect(touch.consumeInteract()).toBe(false)
+    touch.destroy()
+  })
+
+  it('returns a new object on each read (no shared mutation)', () => {
+    const touch = createTouchInput()
+    touch.setDirection({ x: 0, y: 1 })
+    expect(touch.read()).not.toBe(touch.read())
+    touch.destroy()
   })
 })
 
@@ -100,12 +208,15 @@ describe('createInput', () => {
     input.destroy()
   })
 
-  it('prevents browser defaults only for movement keys', () => {
+  it('prevents browser defaults for movement and Space, not unrelated keys', () => {
     const input = createInput()
     const movementPreventDefault = fire('keydown', 'ArrowDown')
-    const otherPreventDefault = fire('keydown', 'Space')
+    // Space is the interact key — prevent the default page scroll.
+    const spacePreventDefault = fire('keydown', 'Space')
+    const otherPreventDefault = fire('keydown', 'Enter')
 
     expect(movementPreventDefault).toHaveBeenCalledTimes(1)
+    expect(spacePreventDefault).toHaveBeenCalledTimes(1)
     expect(otherPreventDefault).not.toHaveBeenCalled()
 
     input.destroy()
@@ -128,5 +239,30 @@ describe('createInput', () => {
     // Listeners are gone; a key event after destroy must not change read().
     fire('keydown', 'ArrowDown')
     expect(input.read()).toEqual({ x: 0, y: 0 })
+  })
+
+  it('edge-triggers interaction on Space: first consume true, then false', () => {
+    const input = createInput()
+
+    fire('keydown', 'Space')
+    // First consume after the press fires exactly once.
+    expect(input.consumeInteract()).toBe(true)
+    // No new press in between → false.
+    expect(input.consumeInteract()).toBe(false)
+
+    input.destroy()
+  })
+
+  it('reports no interaction before any Space press', () => {
+    const input = createInput()
+    expect(input.consumeInteract()).toBe(false)
+    input.destroy()
+  })
+
+  it('clears the interact flag on destroy', () => {
+    const input = createInput()
+    fire('keydown', 'Space')
+    input.destroy()
+    expect(input.consumeInteract()).toBe(false)
   })
 })

@@ -7,8 +7,38 @@
 /** Base tile size in pixels — all pixel art derives from a 16×16 grid. */
 export const TILE_SIZE = 16
 
-/** Integer zoom applied to the game world (3×). */
+/** Integer zoom applied to the game world (3×). Default/desktop reference; the
+ * engine now derives the live scale per viewport width via `computeWorldScale`. */
 export const WORLD_SCALE = 3
+
+// --- Responsive scaling breakpoints (M5) ---
+// Fixed width breakpoints map to integer world-scale tiers so pixel art stays
+// crisp at every size. Inclusive lower bounds: width === breakpoint → next tier.
+
+/** Below this container width, the world renders at 2× (phone portrait). */
+export const SCALE_BP_SM = 640
+
+/** At/above SM and below this width → 3×; at/above this width → 4× (desktop). */
+export const SCALE_BP_MD = 1024
+
+// --- Touch controls (M5) ---
+// On-screen overlay sizes in CSS pixels (not world pixels). Integers keep the
+// pixel-styled controls aligned to whole device pixels.
+
+/** Diameter of the virtual joystick base ring. */
+export const JOYSTICK_BASE_PX = 120
+
+/** Diameter of the draggable joystick thumb. */
+export const JOYSTICK_THUMB_PX = 56
+
+/** Drag displacement at or below this radius (px) reads as no movement. */
+export const JOYSTICK_DEADZONE_PX = 12
+
+/** Diameter of the interact button. */
+export const INTERACT_BTN_PX = 64
+
+/** Corner hint shown on non-touch devices, describing the keyboard controls. */
+export const KEYBOARD_HINT = '方向鍵 / WASD 移動，空白鍵互動'
 
 /** Integer zoom applied to UI surfaces (2×). */
 export const UI_SCALE = 2
