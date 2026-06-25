@@ -11,6 +11,14 @@ const SpriteDebug = import.meta.env.DEV
     )
   : null
 
+// Dev-only UI component gallery (#ui), gated the same way so it stays out of
+// production output.
+const UIGallery = import.meta.env.DEV
+  ? lazy(() =>
+      import('./ui/gallery/UIGallery').then((m) => ({ default: m.UIGallery })),
+    )
+  : null
+
 /** Tracks `location.hash` so toggling `#sprites` swaps views without a reload. */
 function useHash(): string {
   const [hash, setHash] = useState(() => window.location.hash)
@@ -29,6 +37,14 @@ function App() {
     return (
       <Suspense fallback={null}>
         <SpriteDebug />
+      </Suspense>
+    )
+  }
+
+  if (UIGallery && hash === '#ui') {
+    return (
+      <Suspense fallback={null}>
+        <UIGallery />
       </Suspense>
     )
   }
