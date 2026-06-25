@@ -8,12 +8,14 @@
 讓觸控裝置也能走動探索：左下虛擬搖桿驅動移動、右下互動鈕送出互動訊號，並依視窗寬度自動調整世界縮放倍率（手機小、桌機大，整數倍保持像素清晰）。方案 A（相機跟隨）已天然支援直立視窗，**不提醒翻轉手機**。
 
 **In Scope**
+
 - `src/react/Joystick.tsx`：觸控搖桿 + 互動鈕疊層（React，疊在 canvas 上）。
 - 搖桿/互動鈕輸出餵入 `src/game/input.ts` 的統一介面，玩家與相機不區分來源。
 - 觸控偵測：觸控裝置顯示搖桿/互動鈕，非觸控隱藏並顯示鍵盤提示。
 - RWD 縮放：依寬度計算整數倍 `WORLD_SCALE`，resize 重算縮放與相機。
 
 **Out of Scope**
+
 - 互動內容面板（M7）。M5 只送出「互動鈕按下」的輸入事件，不負責面板。
 - 互動偵測（鄰近判定 / 浮動提示，M6）。
 - 彩蛋（M8）。
@@ -30,6 +32,7 @@ GameCanvas (React)
 ```
 
 `touchInput` 對外有兩組介面：
+
 - **消費面（`InputSource`）**：`read()` / `consumeInteract()` / `destroy()`，給引擎每幀讀取。
 - **控制面**：`setDirection(dir)` / `triggerInteract()`，給 React `Joystick` 在 pointer 事件時呼叫。
 
@@ -39,11 +42,11 @@ GameCanvas (React)
 
 依 CLAUDE.md「純邏輯 → 輕量單元測試」，下列核心無 DOM 依賴、直接測：
 
-| 函數 | 位置 | 職責 |
-|---|---|---|
-| `directionFromVector(dx, dy)` | `game/input.ts` | 搖桿拖曳位移（相對底座中心）→ 含 deadzone 與 clamp 半徑的正規化 `Direction`。位移在 deadzone 內回 `{0,0}`；過 deadzone 即輸出 magnitude 1 的方向（**全速**，與鍵盤一致，非類比變速）。 |
-| `mergeDirections(kb, touch)` | `game/input.ts` | 合併兩來源：鍵盤非零優先，否則用觸控；皆零回 `{0,0}`。回傳新物件，不變更輸入。 |
-| `computeWorldScale(width)` | `game/scale.ts`（新） | 固定斷點 → 整數倍縮放。`< SCALE_BP_SM → 2`、`< SCALE_BP_MD → 3`、否則 `4`。保證整數、可預測。 |
+| 函數                          | 位置                  | 職責                                                                                                                                                                                   |
+| ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `directionFromVector(dx, dy)` | `game/input.ts`       | 搖桿拖曳位移（相對底座中心）→ 含 deadzone 與 clamp 半徑的正規化 `Direction`。位移在 deadzone 內回 `{0,0}`；過 deadzone 即輸出 magnitude 1 的方向（**全速**，與鍵盤一致，非類比變速）。 |
+| `mergeDirections(kb, touch)`  | `game/input.ts`       | 合併兩來源：鍵盤非零優先，否則用觸控；皆零回 `{0,0}`。回傳新物件，不變更輸入。                                                                                                         |
+| `computeWorldScale(width)`    | `game/scale.ts`（新） | 固定斷點 → 整數倍縮放。`< SCALE_BP_SM → 2`、`< SCALE_BP_MD → 3`、否則 `4`。保證整數、可預測。                                                                                          |
 
 `directionFromKeys`（M4 既有）維持不變。
 
@@ -84,6 +87,7 @@ GameCanvas (React)
 ## 七、常數（`src/constants.ts` 擴充）
 
 新增（皆整數）：
+
 - `SCALE_BP_SM` / `SCALE_BP_MD`：縮放斷點寬度（px）。對應 `computeWorldScale` 的 2× / 3× / 4×。
 - `JOYSTICK_BASE_PX`（底座直徑，~120）、`JOYSTICK_THUMB_PX`（拇指直徑）、`JOYSTICK_DEADZONE_PX`（deadzone 半徑）。
 - `INTERACT_BTN_PX`（互動鈕直徑，~64，拇指可達區）。
@@ -92,16 +96,16 @@ GameCanvas (React)
 
 ## 八、檔案異動清單
 
-| 檔案 | 動作 |
-|---|---|
-| `src/game/scale.ts` | 新增 `computeWorldScale` |
-| `src/game/scale.test.ts` | 新增斷點測試 |
-| `src/game/input.ts` | 擴充 `InputSource`（`consumeInteract`）、Space 鍵、`createTouchInput`、`directionFromVector`、`mergeDirections` |
-| `src/game/input.test.ts` | 擴充純函數測試 |
-| `src/game/engine.ts` | 收 `touch` 參數、動態縮放、合併輸入、互動 console |
-| `src/react/Joystick.tsx` | 新增觸控疊層 + 鍵盤提示 |
-| `src/react/GameCanvas.tsx` | 建立共享 `touch`、傳入引擎、渲染 `Joystick` |
-| `src/constants.ts` | 新增縮放斷點與搖桿/按鈕尺寸 |
+| 檔案                       | 動作                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `src/game/scale.ts`        | 新增 `computeWorldScale`                                                                                        |
+| `src/game/scale.test.ts`   | 新增斷點測試                                                                                                    |
+| `src/game/input.ts`        | 擴充 `InputSource`（`consumeInteract`）、Space 鍵、`createTouchInput`、`directionFromVector`、`mergeDirections` |
+| `src/game/input.test.ts`   | 擴充純函數測試                                                                                                  |
+| `src/game/engine.ts`       | 收 `touch` 參數、動態縮放、合併輸入、互動 console                                                               |
+| `src/react/Joystick.tsx`   | 新增觸控疊層 + 鍵盤提示                                                                                         |
+| `src/react/GameCanvas.tsx` | 建立共享 `touch`、傳入引擎、渲染 `Joystick`                                                                     |
+| `src/constants.ts`         | 新增縮放斷點與搖桿/按鈕尺寸                                                                                     |
 
 ## 九、錯誤處理與邊界
 
@@ -113,10 +117,12 @@ GameCanvas (React)
 ## 十、測試與驗收
 
 **單元測試（Vitest）**
+
 - `scale.test.ts`：`computeWorldScale` 於斷點邊界（含等號邊界）回傳正確整數倍。
 - `input.test.ts`：`directionFromVector`（deadzone 內回零、過 deadzone 正規化、超半徑 clamp）、`mergeDirections`（鍵盤優先 / 退回觸控 / 皆零）、`consumeInteract`（按下後首次回 true、再次回 false）。
 
 **手動驗證（`vite dev`，對應驗收標準）**
+
 - [ ] 觸控搖桿可八方向移動，與鍵盤共用同一輸入介面。
 - [ ] 直立窄視窗下可走到所有區域（方案 A）。
 - [ ] 縮放係數為整數倍、像素清晰；resize 後縮放與相機正確。
