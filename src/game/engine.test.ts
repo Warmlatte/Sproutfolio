@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pixiMock = vi.hoisted(() => ({
   appInstances: [] as MockApplication[],
+  containerInstances: [] as { scale: { set: ReturnType<typeof vi.fn> } }[],
 }))
 
 const textureMock = vi.hoisted(() => ({
@@ -129,6 +130,9 @@ vi.mock('pixi.js', () => {
   class Container {
     readonly scale = { set: vi.fn() }
     readonly position = { set: vi.fn() }
+    constructor() {
+      pixiMock.containerInstances.push(this)
+    }
   }
 
   return { Application, Container }
@@ -145,15 +149,35 @@ vi.mock('./scenes/farm', () => ({
 const inputMock = vi.hoisted(() => ({
   destroy: vi.fn(),
   read: vi.fn(() => ({ x: 0, y: 0 })),
+  consumeInteract: vi.fn(() => false),
 }))
 
 const playerMock = vi.hoisted(() => ({
   update: vi.fn(),
 }))
 
-vi.mock('./input', () => ({
-  createInput: vi.fn(() => ({ read: inputMock.read, destroy: inputMock.destroy })),
-}))
+vi.mock('./input', async (importOriginal) => {
+  // Keep the real pure functions (mergeDirections); only the live keyboard source
+  // is mocked so the engine doesn't touch real window listeners.
+  const actual = await importOriginal<typeof import('./input')>()
+  return {
+    ...actual,
+    createInput: vi.fn(() => ({
+      read: inputMock.read,
+      consumeInteract: inputMock.consumeInteract,
+      destroy: inputMock.destroy,
+    })),
+  }
+})
+
+/** A shared touch input source stand-in passed into `createEngine`. */
+function makeTouch() {
+  return {
+    read: vi.fn<() => { x: number; y: number }>(() => ({ x: 0, y: 0 })),
+    consumeInteract: vi.fn<() => boolean>(() => false),
+    destroy: vi.fn<() => void>(),
+  }
+}
 
 vi.mock('./player', () => ({
   createPlayer: vi.fn(() => ({
@@ -188,10 +212,13 @@ describe('createEngine', () => {
       },
     )
     pixiMock.appInstances.length = 0
+    pixiMock.containerInstances.length = 0
     textureMock.loadTextureAtlas.mockReset()
     farmSceneMock.buildFarmScene.mockReset()
     inputMock.destroy.mockClear()
     inputMock.read.mockClear()
+    inputMock.consumeInteract.mockClear()
+    inputMock.consumeInteract.mockReturnValue(false)
     playerMock.update.mockClear()
   })
 
@@ -205,7 +232,7 @@ describe('createEngine', () => {
     const container = makeContainer()
     const { createEngine } = await import('./engine')
 
-    createEngine(container)
+    createEngine(container, makeTouch())
     await flushAsync()
 
     expect(pixiMock.appInstances[0]?.destroy).toHaveBeenCalledWith(true, {
@@ -228,7 +255,7 @@ describe('createEngine', () => {
     const container = makeContainer()
     const { createEngine } = await import('./engine')
 
-    const engine = createEngine(container)
+    const engine = createEngine(container, makeTouch())
     await flushAsync()
     engine.destroy()
     resolveAtlas(atlas)
@@ -243,7 +270,7 @@ describe('createEngine', () => {
     const container = makeContainer()
     const { createEngine } = await import('./engine')
 
-    const engine = createEngine(container)
+    const engine = createEngine(container, makeTouch())
     await flushAsync()
 
     // Resize source is the container ResizeObserver, not a window resize event.
@@ -260,7 +287,7 @@ describe('createEngine', () => {
     const container = makeContainer()
     const { createEngine } = await import('./engine')
 
-    createEngine(container)
+    createEngine(container, makeTouch())
     await flushAsync()
 
     const app = pixiMock.appInstances[0]!
@@ -282,7 +309,7 @@ describe('createEngine', () => {
     const container = makeZeroSizeContainer()
     const { createEngine } = await import('./engine')
 
-    const engine = createEngine(container)
+    const engine = createEngine(container, makeTouch())
     await flushAsync()
 
     expect(resizeMock.instances).toHaveLength(1)
@@ -293,26 +320,106 @@ describe('createEngine', () => {
     expect(pixiMock.appInstances).toHaveLength(0)
   })
 
-  it('runs a ticker loop on success and stops it on teardown', async () => {
+  it('runs a ticker loop on success and stops it on teardown without destroying shared touch', async () => {
     const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
     textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
     const container = makeContainer()
+    const touch = makeTouch()
     const { createEngine } = await import('./engine')
 
-    const engine = createEngine(container)
+    const engine = createEngine(container, touch)
     await flushAsync()
 
     const app = pixiMock.appInstances[0]!
     expect(app.ticker.add).toHaveBeenCalledTimes(1)
     const tick = app.ticker.add.mock.calls[0]![0] as (t: { deltaMS: number }) => void
 
-    // A frame reads input and advances the player.
+    // A frame merges keyboard + touch directions and advances the player.
     tick({ deltaMS: 16 })
     expect(inputMock.read).toHaveBeenCalled()
+    expect(touch.read).toHaveBeenCalled()
     expect(playerMock.update).toHaveBeenCalledWith(16 / 1000, { x: 0, y: 0 }, expect.anything())
 
     engine.destroy()
     expect(app.ticker.remove).toHaveBeenCalledWith(tick)
+    // The engine owns only its keyboard source; the shared touch is owned by the caller.
     expect(inputMock.destroy).toHaveBeenCalledTimes(1)
+    expect(touch.destroy).not.toHaveBeenCalled()
+  })
+
+  it('feeds the touch direction to the player when the keyboard is idle', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const touch = makeTouch()
+    touch.read.mockReturnValue({ x: 1, y: 0 })
+    const { createEngine } = await import('./engine')
+
+    createEngine(container, touch)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    const tick = app.ticker.add.mock.calls[0]![0] as (t: { deltaMS: number }) => void
+    tick({ deltaMS: 16 })
+
+    // Keyboard reads zero, so the merged direction is the touch vector.
+    expect(playerMock.update).toHaveBeenCalledWith(16 / 1000, { x: 1, y: 0 }, expect.anything())
+  })
+
+  it('consumes interaction from keyboard or touch each frame', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const touch = makeTouch()
+    const { createEngine } = await import('./engine')
+
+    createEngine(container, touch)
+    await flushAsync()
+
+    const app = pixiMock.appInstances[0]!
+    const tick = app.ticker.add.mock.calls[0]![0] as (t: { deltaMS: number }) => void
+    tick({ deltaMS: 16 })
+
+    // Both sources are polled for an edge-triggered interaction every frame.
+    expect(inputMock.consumeInteract).toHaveBeenCalled()
+    expect(touch.consumeInteract).toHaveBeenCalled()
+  })
+
+  it('sets the initial world scale from the container size', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    // makeContainer() is 320×240 → cover ceil(max(320/448, 240/288)) floored at 2 → 2.
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    createEngine(container, makeTouch())
+    await flushAsync()
+
+    const world = pixiMock.containerInstances[0]!
+    expect(world.scale.set).toHaveBeenCalledWith(2)
+  })
+
+  it('recomputes the cover world scale when the container size changes', async () => {
+    const atlas = { getTexture: vi.fn(), destroy: vi.fn() }
+    textureMock.loadTextureAtlas.mockResolvedValueOnce(atlas)
+    const container = makeContainer()
+    const { createEngine } = await import('./engine')
+
+    createEngine(container, makeTouch())
+    await flushAsync()
+
+    const world = pixiMock.containerInstances[0]!
+    world.scale.set.mockClear()
+    const mutableContainer = container as HTMLElement & {
+      clientWidth: number
+      clientHeight: number
+    }
+    // 320×240 → 2×; resize to 1200×800 → ceil(max(1200/448, 800/288)) = ceil(2.78) = 3.
+    mutableContainer.clientWidth = 1200
+    mutableContainer.clientHeight = 800
+
+    resizeMock.instances[0]?.trigger()
+
+    expect(world.scale.set).toHaveBeenCalledWith(3)
   })
 })

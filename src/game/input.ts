@@ -8,6 +8,8 @@
  * leak-free teardown alongside the engine.
  */
 
+import { JOYSTICK_DEADZONE_PX } from '../constants'
+
 /** A direction vector. Screen space: +x is right, +y is down (up is negative). */
 export interface Direction {
   readonly x: number
@@ -49,10 +51,41 @@ export function directionFromKeys(keys: ReadonlySet<string>): Direction {
   return { x, y }
 }
 
+/**
+ * Converts a joystick drag displacement (relative to the base center, in pixels)
+ * into a normalized `Direction`. Inside the deadzone radius it reads as no
+ * movement; past it, the vector is normalized to magnitude 1 (full speed,
+ * matching keyboard — not analog) regardless of how far the drag reaches. Returns
+ * a fresh object; inputs are never mutated.
+ */
+export function directionFromVector(dx: number, dy: number): Direction {
+  const magnitude = Math.hypot(dx, dy)
+  if (magnitude <= JOYSTICK_DEADZONE_PX) {
+    return { x: 0, y: 0 }
+  }
+  return { x: dx / magnitude, y: dy / magnitude }
+}
+
+/**
+ * Combines a keyboard and a touch direction with keyboard priority: a non-zero
+ * keyboard vector wins; otherwise the touch vector is used; both zero yields the
+ * zero vector. Returns a fresh object; neither input is mutated.
+ */
+export function mergeDirections(kb: Direction, touch: Direction): Direction {
+  const source = kb.x !== 0 || kb.y !== 0 ? kb : touch
+  return { x: source.x, y: source.y }
+}
+
 /** A live keyboard input source. `destroy()` is safe to call once on teardown. */
 export interface InputSource {
   /** The current normalized direction vector (a new object each call). */
   read(): Direction
+  /**
+   * Edge-triggered interaction: returns `true` if an interaction was pressed
+   * since the last call and clears the flag, otherwise `false` — so one press
+   * triggers exactly one interaction (no auto-repeat while held).
+   */
+  consumeInteract(): boolean
   /** Removes window listeners and clears state. */
   destroy(): void
 }
@@ -64,8 +97,15 @@ export interface InputSource {
  */
 export function createInput(): InputSource {
   const pressed = new Set<string>()
+  // Edge-triggered: set on a Space keydown, cleared when the engine consumes it.
+  let interactPending = false
 
   const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.code === 'Space') {
+      event.preventDefault()
+      interactPending = true
+      return
+    }
     if (!MOVEMENT_KEYS.has(event.code)) return
     event.preventDefault()
     pressed.add(event.code)
@@ -86,12 +126,63 @@ export function createInput(): InputSource {
     read(): Direction {
       return directionFromKeys(pressed)
     },
+    consumeInteract(): boolean {
+      if (!interactPending) return false
+      interactPending = false
+      return true
+    },
     destroy(): void {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', clearPressed)
-      // Clear held keys so a lingering press can't leak past teardown.
+      // Clear held keys and any pending interaction so nothing leaks past teardown.
       pressed.clear()
+      interactPending = false
+    },
+  }
+}
+
+/**
+ * A touch input source. Beyond the consumer-facing `InputSource`, it exposes a
+ * control-facing surface for the React `Joystick` to drive: `setDirection` while
+ * dragging and `triggerInteract` on the interact button. The engine reads it via
+ * the same `Direction` interface as the keyboard, so player/camera stay unaware
+ * of the source.
+ */
+export interface TouchInputSource extends InputSource {
+  /** Overwrites the current touch direction (stored as a fresh copy). */
+  setDirection(dir: Direction): void
+  /** Sets the edge-triggered interact flag for the next `consumeInteract()`. */
+  triggerInteract(): void
+}
+
+/**
+ * Creates a touch input source. It owns no DOM listeners (the React `Joystick`
+ * owns the pointer events and pushes state in), so `destroy()` only resets state.
+ */
+export function createTouchInput(): TouchInputSource {
+  let direction: Direction = { x: 0, y: 0 }
+  let interactPending = false
+
+  return {
+    read(): Direction {
+      return { x: direction.x, y: direction.y }
+    },
+    consumeInteract(): boolean {
+      if (!interactPending) return false
+      interactPending = false
+      return true
+    },
+    setDirection(dir: Direction): void {
+      // Store a copy so a later mutation of the caller's object can't leak in.
+      direction = { x: dir.x, y: dir.y }
+    },
+    triggerInteract(): void {
+      interactPending = true
+    },
+    destroy(): void {
+      direction = { x: 0, y: 0 }
+      interactPending = false
     },
   }
 }

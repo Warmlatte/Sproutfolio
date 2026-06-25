@@ -7,17 +7,24 @@
  * mount→unmount→remount cycle of React Strict Mode leak-free: if teardown runs
  * before init finishes, the half-built engine is disposed instead of attached.
  *
- * The world is a single container scaled by the integer `WORLD_SCALE`; the map
- * is centered via the pure `computeCenterOffset` and re-centered on resize. Asset
- * load failures surface a visible pixel-styled message instead of failing silently.
+ * The world is a single container scaled by an integer multiple derived from the
+ * container width (`computeWorldScale`), recomputed on resize so pixel art stays
+ * crisp on phones and desktops alike; the camera follows the player, clamped to
+ * the map. Asset load failures surface a visible pixel-styled message instead of
+ * failing silently.
+ *
+ * Input is source-agnostic: the engine merges its own keyboard source with a
+ * shared `touch` source (owned by the caller) each frame, so player and camera
+ * never know where movement came from.
  */
 
 import { Application, Container, type Ticker } from 'pixi.js'
 
-import { MAP_COLS, MAP_ROWS, TILE_SIZE, WORLD_SCALE } from '../constants'
+import { MAP_COLS, MAP_ROWS, TILE_SIZE } from '../constants'
 import { computeFollowOffset } from './camera'
 import { buildSolidSet } from './collision'
-import { createInput, type InputSource } from './input'
+import { createInput, mergeDirections, type InputSource } from './input'
+import { computeWorldScale } from './scale'
 import { farmMap } from './map/farmMap'
 import { createPlayer } from './player'
 import { buildFarmScene } from './scenes/farm'
@@ -111,20 +118,21 @@ function waitForSize(container: HTMLElement): {
   }
 }
 
-export function createEngine(container: HTMLElement): EngineHandle {
+export function createEngine(container: HTMLElement, touch: InputSource): EngineHandle {
   let destroyed = false
   let app: Application | null = null
   let atlas: TextureAtlas | null = null
-  let input: InputSource | null = null
+  let keyboard: InputSource | null = null
   let tick: ((ticker: Ticker) => void) | null = null
   let detachResize: (() => void) | null = null
 
-  /** Releases the per-frame loop, input listeners, and resize observer. */
+  /** Releases the per-frame loop, keyboard listeners, and resize observer. The
+   * shared `touch` source is owned by the caller and is NOT destroyed here. */
   const stopLoop = (): void => {
     if (app && tick) app.ticker.remove(tick)
     tick = null
-    input?.destroy()
-    input = null
+    keyboard?.destroy()
+    keyboard = null
     detachResize?.()
     detachResize = null
   }
@@ -159,23 +167,27 @@ export function createEngine(container: HTMLElement): EngineHandle {
       atlas = loadedAtlas
 
       const world = new Container()
-      world.scale.set(WORLD_SCALE)
+      // Integer world scale derived from the container size (cover, so the
+      // landscape map fills tall portrait viewports too); held in a local so
+      // resize can recompute it and the camera can follow at the live scale.
+      let currentScale = computeWorldScale(container.clientWidth, container.clientHeight)
+      world.scale.set(currentScale)
       app.stage.addChild(world)
       buildFarmScene(world, atlas)
 
       const solids = buildSolidSet(farmMap)
       const player = createPlayer(world, atlas, farmMap.anchors.spawn)
-      input = createInput()
+      keyboard = createInput()
 
       // Reposition the world so the camera centers on the player, clamped to the
-      // map. Used both per-frame and on container resize.
+      // map. Used both per-frame and on container resize, always at currentScale.
       const follow = (): void => {
         if (!app) return
         const offset = computeFollowOffset(
           player.px,
           { w: app.screen.width, h: app.screen.height },
           MAP_PX,
-          WORLD_SCALE,
+          currentScale,
         )
         world.position.set(offset.x, offset.y)
       }
@@ -184,17 +196,30 @@ export function createEngine(container: HTMLElement): EngineHandle {
       // Recompute from the CONTAINER's size, not the window — the two can differ
       // once panels/sidebars arrive (M7). Pixi's resize plugin listens to
       // window resize, so container-only changes must be applied explicitly first.
+      // Resize also re-derives the integer world scale for the new width.
       const resizeObserver = new ResizeObserver(() => {
         app?.resize()
+        currentScale = computeWorldScale(container.clientWidth, container.clientHeight)
+        world.scale.set(currentScale)
         follow()
       })
       resizeObserver.observe(container)
       detachResize = () => resizeObserver.disconnect()
 
-      // Per-frame loop: read input → advance the player → follow the camera.
+      // Per-frame loop: merge keyboard + touch input → advance the player →
+      // follow the camera. Either source can fire an edge-triggered interaction.
       tick = (ticker: Ticker): void => {
         const dt = ticker.deltaMS / 1000
-        player.update(dt, input?.read() ?? { x: 0, y: 0 }, solids)
+        const direction = mergeDirections(
+          keyboard?.read() ?? { x: 0, y: 0 },
+          touch.read(),
+        )
+        player.update(dt, direction, solids)
+        if (keyboard?.consumeInteract() || touch.consumeInteract()) {
+          // M5 has no interaction panel yet (M7); log the signal to verify wiring.
+          // TODO(M7): replace this temporary stub with the real interaction panel.
+          console.info('[interact] triggered')
+        }
         follow()
       }
       app.ticker.add(tick)
