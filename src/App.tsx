@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { GameCanvas } from './react/GameCanvas'
+import { UIErrorBoundary } from './ui/UIErrorBoundary'
 
 // Dev-only sprite debug viewer. Gating the dynamic import on `import.meta.env.DEV`
 // (statically `false` in production) lets Rollup drop the dev chunk from the
@@ -8,6 +9,14 @@ import { GameCanvas } from './react/GameCanvas'
 const SpriteDebug = import.meta.env.DEV
   ? lazy(() =>
       import('./dev/SpriteDebug').then((m) => ({ default: m.SpriteDebug })),
+    )
+  : null
+
+// Dev-only UI component gallery (#ui), gated the same way so it stays out of
+// production output.
+const UIGallery = import.meta.env.DEV
+  ? lazy(() =>
+      import('./ui/gallery/UIGallery').then((m) => ({ default: m.UIGallery })),
     )
   : null
 
@@ -30,6 +39,16 @@ function App() {
       <Suspense fallback={null}>
         <SpriteDebug />
       </Suspense>
+    )
+  }
+
+  if (UIGallery && hash === '#ui') {
+    return (
+      <UIErrorBoundary fallback={<p style={{ padding: 16 }}>UI gallery hit a render error.</p>}>
+        <Suspense fallback={null}>
+          <UIGallery />
+        </Suspense>
+      </UIErrorBoundary>
     )
   }
 
