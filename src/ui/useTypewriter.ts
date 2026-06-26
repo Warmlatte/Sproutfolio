@@ -31,6 +31,17 @@ export function useTypewriter(text: string, speed = 30): TypewriterState {
   const total = text.length
   const [count, setCount] = useState(0)
   const skippedRef = useRef(false)
+  const prevTextRef = useRef(text)
+
+  // Render-time reset: when `text` changes, drop the visible progress to 0 in the
+  // same render (React re-renders before paint) so the old count never slices the
+  // new string into a one-frame full-text flash. Guarded by the ref so it runs
+  // only on the change render and converges instead of looping.
+  if (prevTextRef.current !== text) {
+    prevTextRef.current = text
+    skippedRef.current = false
+    setCount(0)
+  }
 
   useEffect(() => {
     // Reset for the new text/speed before (re)starting the reveal.
@@ -60,6 +71,24 @@ export function useTypewriter(text: string, speed = 30): TypewriterState {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [text, speed, total])
+
+  useEffect(() => {
+    // Track reduced-motion changes that happen after mount: enabling it mid-reveal
+    // must complete the reveal immediately without waiting for a text/speed change.
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return
+    }
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const onChange = () => {
+      if (query.matches) {
+        // Guard the running raf tick (if any) so it resolves to full text too.
+        skippedRef.current = true
+        setCount(total)
+      }
+    }
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [total])
 
   const skip = useCallback(() => {
     skippedRef.current = true

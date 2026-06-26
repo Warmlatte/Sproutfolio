@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { GameCanvas } from './react/GameCanvas'
+import { UIErrorBoundary } from './ui/UIErrorBoundary'
 
 // Dev-only sprite debug viewer. Gating the dynamic import on `import.meta.env.DEV`
 // (statically `false` in production) lets Rollup drop the dev chunk from the
@@ -43,9 +44,11 @@ function App() {
 
   if (UIGallery && hash === '#ui') {
     return (
-      <Suspense fallback={null}>
-        <UIGallery />
-      </Suspense>
+      <UIErrorBoundary fallback={<p style={{ padding: 16 }}>UI gallery hit a render error.</p>}>
+        <Suspense fallback={null}>
+          <UIGallery />
+        </Suspense>
+      </UIErrorBoundary>
     )
   }
 

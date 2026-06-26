@@ -10,6 +10,7 @@
 
 import type { CSSProperties } from 'react'
 import { spriteBackground } from './spriteBackground'
+import { inventorySlotLabel } from './inventorySlotLabel'
 import { PixelIcon } from './primitives/PixelIcon'
 import { catalog } from '../game/sprites/catalog'
 
@@ -63,7 +64,7 @@ export function InventoryGrid({ items, columns, selectedIndex, onSelect }: Inven
             style={cellStyle}
             onClick={() => onSelect?.(index)}
             aria-pressed={selected}
-            aria-label={item?.label ?? `empty slot ${index}`}
+            aria-label={inventorySlotLabel(item, index)}
           >
             {item ? <PixelIcon index={item.iconIndex} label={item.label} /> : null}
           </button>

@@ -34,3 +34,6 @@ export type { NineSliceProps } from './primitives/NineSlice'
 
 export { useTypewriter } from './useTypewriter'
 export type { TypewriterState } from './useTypewriter'
+
+export { UIErrorBoundary } from './UIErrorBoundary'
+export type { UIErrorBoundaryProps } from './UIErrorBoundary'

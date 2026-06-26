@@ -35,25 +35,26 @@ export function DialogBox({ text, speakerName, speed = 30, onAdvance }: DialogBo
 
   return (
     <NineSlice
+      as="button"
       asset={DIALOG_ASSET}
       slice={DIALOG_SLICE}
       scale={2}
       onClick={handleClick}
-      className="p-4 cursor-pointer text-pixel-base"
+      className="p-4 cursor-pointer text-pixel-base text-left"
     >
       {speakerName ? (
-        <p className="text-accent" style={{ margin: '0 0 8px' }}>
+        <span className="text-accent" style={{ display: 'block', margin: '0 0 8px' }}>
           {speakerName}
-        </p>
+        </span>
       ) : null}
-      <p style={{ margin: 0 }}>
+      <span style={{ display: 'block', margin: 0 }}>
         {shown}
         {!isDone ? (
           <span className="animate-pulse" aria-hidden="true">
             ▋
           </span>
         ) : null}
-      </p>
+      </span>
     </NineSlice>
   )
 }
